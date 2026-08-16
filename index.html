@@ -474,6 +474,7 @@ footer b{color:var(--dim)}
               <option value="athenapro">Athena Pro Line (pó)</option>
             </optgroup>
             <optgroup label="Linhas nacionais">
+              <option value="flowermind">Flowermind (kit líquido + pó)</option>
               <option value="masterplants">Master Plants</option>
               <option value="high">High Nutrients</option>
               <option value="easycoco">Easy Coco</option>
@@ -840,6 +841,18 @@ var SUBS = {
   living:  {mult:0.95, ph:'6,3 – 6,9', name:'solo vivo'}
 };
 
+/* Dimensionamento do Kit Flowermind. O fabricante publica o rendimento médio em
+   vasos de 10 L e ciclo de 10 semanas: 5 plantas no P, 20 no M e 100 no G de 5 L.
+   A escala é exatamente linear, o que dá 50 mL de líquido e 6,25 g de rocha por
+   planta por ciclo — é daí que sai a recomendação de tamanho abaixo. */
+var FM_ML_PLANTA = 50, FM_G_PLANTA = 6.25, FM_SEMANAS_REF = 10;
+var FM_KITS = [
+  {n:'P',       ml:250,  g:32,  plantas:5},
+  {n:'M',       ml:1000, g:125, plantas:20},
+  {n:'G 2,5 L', ml:2500, g:315, plantas:50},
+  {n:'G 5 L',   ml:5000, g:625, plantas:100}
+];
+
 var NUTES = {salt:1.06, full:1.05, base:1.00, orgliq:0.93, dry:0.95, tea:0.88};
 var NUTE_NAME = {salt:'sais puros', full:'base + suplementos', base:'somente base', orgliq:'orgânico líquido', dry:'orgânicos secos', tea:'chás / só água'};
 
@@ -852,6 +865,7 @@ var BRANDS = {
   athenapro:{t:'salt', ec:2.4, nota:'Pó de duas partes (Core + Bloom), formulado para EC alta e ambiente controlado. Confira a dureza da sua água antes de seguir a tabela cheia.'},
   gh:       {t:'full', ec:2.0, nota:'Três partes (Gro / Micro / Bloom). A ordem de mistura importa: tanque cheio de água, Micro primeiro, mexa, depois Gro, depois Bloom. Juntar concentrados direto um no outro precipita cálcio e o nutriente fica no fundo do balde. Em coco ou água de osmose quase sempre pede cal-mag à parte.'},
   ghmaxi:   {t:'base', ec:1.9, nota:'Pó de parte única, barato e direto. Dissolva por completo antes de medir a EC, senão você subdosa sem perceber.'},
+  flowermind:{t:'orgliq', ec:1.4, semFase:true, nota:'Kit de duas partes para o <b>ciclo inteiro</b>, sem dividir vega e floração: <b>A</b> é fertilizante líquido de substâncias húmicas (resíduo orgânico de frutas e verduras, ácido fosfórico e hidróxido de potássio) e <b>B</b> é blend de pó de rocha ativada (óxidos de silício, cálcio, ferro, potássio, magnésio, fósforo e sódio). O fabricante recomenda substrato de <b>perlita, turfa e húmus</b>. Nos últimos 15 dias, só água.'},
   masterplants:{t:'full', ec:2.0, nota:'Linha nacional. Não tenho os dados de formulação dela para detalhar aqui, então trate a tabela do fabricante como ponto de partida e confirme pela EC — é ela que manda, não o rótulo. Se a sua Master Plants for base + aditivos, o tipo acima já está certo; se for só uma base, troque para "Somente base".'},
   high:     {t:'full', ec:2.0, nota:'Linha nacional, fácil de achar em growshop e com tabela própria por fase. Como em quase toda linha em frasco, a tabela do fabricante costuma ser generosa — muita gente roda entre 70 e 80% do indicado e confere pela EC.'},
   terraaq:  {t:'full', ec:2.0, nota:'Herdeira da antiga GHE, mesma lógica de três partes da Flora Series. A ordem de mistura vale igual: tanque cheio primeiro, um componente de cada vez, nunca concentrados juntos.'},
@@ -1294,6 +1308,27 @@ function render(){
   if (r.brand.coco && (s.sub === 'soil' || s.sub === 'living')) notes.push({t:'warn',i:'🥥',h:'Essa linha foi feita para coco, não para terra',b:'Linhas de coco já vêm carregadas de cálcio porque a fibra sequestra o que você joga. Em terra isso vira excesso: reduza a dose e não acrescente cal-mag por cima.'});
 
   if (r.brand.t !== s.nute) notes.push({t:'info',i:'🔀',h:'Você mudou o tipo de programa',b:'A marca escolhida entra por padrão como <b>' + NUTE_NAME[r.brand.t] + '</b> e você está calculando como <b>' + NUTE_NAME[s.nute] + '</b>. Se foi de propósito, ótimo — é exatamente para isso que o campo existe. A conta segue o tipo, não a marca.'});
+
+  if (s.brand === 'flowermind'){
+    var semanas = r.cycleDays / 7;
+    var precisaMl = FM_ML_PLANTA * s.np * (semanas / FM_SEMANAS_REF);
+    var precisaG  = FM_G_PLANTA  * s.np * (semanas / FM_SEMANAS_REF);
+    // Tolerância de 15%: o ciclo aqui conta ~10 dias de estabelecimento que a
+    // referência de "10 semanas" do fabricante não inclui. Sem ela o app sobe um
+    // tamanho de kit sem necessidade e contradiz o próprio fabricante.
+    var kit = null;
+    for (var ki = 0; ki < FM_KITS.length; ki++){ if (FM_KITS[ki].ml >= precisaMl * 0.85){ kit = FM_KITS[ki]; break; } }
+    var justo = kit && kit.ml < precisaMl;
+    notes.push({t:'ok',i:'📦',h:'Tamanho de kit para este cultivo',b:'Suas <b>' + fmt(s.np) + ' planta' + (s.np>1?'s':'') + '</b> em ciclo de ' + fmt(semanas,1) + ' semanas consomem cerca de <b>' + fmt(precisaMl) + ' mL do líquido A</b> e <b>' + fmt(precisaG) + ' g do blend B</b>. '
+      + (kit ? 'O <b>Kit ' + kit.n + '</b> (' + fmt(kit.ml) + ' mL + ' + fmt(kit.g) + ' g) atende'
+              + (justo ? ' — mas fica <b>justo</b>, então dose com mão leve no fim do ciclo ou tenha um reforço.' : ', com folga.')
+            : 'Nem o maior kit (5 L + 625 g) cobre sozinho — você vai precisar de mais de um.')
+      + ' Base: o fabricante publica 5 plantas no P, 20 no M e 100 no G de 5 L, em vasos de 10 L e ciclo de 10 semanas, o que dá 50 mL de A e 6,25 g de B por planta.'});
+
+    var inerte = (s.sub === 'coco' || s.sub === 'rockwool' || s.sub === 'dwc');
+    if (inerte) notes.push({t:'warn',i:'⚗️',h:'Fora do substrato para o qual foi feito',b:'A Flowermind é formulada para <b>perlita, turfa e húmus</b> — substrato vivo, onde a substância húmica alimenta o microbioma e não só a planta. Em ' + r.sub.name + ' esse mecanismo não existe: não há microbiota para processar matéria orgânica, e resto orgânico em meio inerte vira comida de patógeno e entope gotejador. Funciona? Talvez. Mas você está fora da indicação, e aí o "não precisa medir pH nem EC" deixa de valer — meça.'});
+    else notes.push({t:'info',i:'⚗️',h:'Por que aqui não se mede pH nem EC',b:'A justificativa do fabricante é que a nutrição não vem de sais artificiais e sim de substâncias húmicas, que formam compostos assimiláveis <b>entre pH 4 e 10</b> — então a leitura do medidor não diz nada de interpretável. Faz sentido dentro dessa lógica. Duas consequências práticas: a rampa de EC do cronograma abaixo é <b>referência, não receita</b>, e não se faz flush — só água nos últimos 15 dias. Sinal de excesso é ponta de folha queimada ou folha encurvada, parecido com sobra de nitrogênio.'});
+  }
 
   if (s.sub === 'coco' && s.ro < 0.15) notes.push({t:'warn',i:'💦',h:'Escoamento insuficiente para coco',b:'A fibra de coco precisa de 15 a 25% de escoamento a cada rega para não acumular sais. Você está com ' + n(s.ro*100) + '%. Regar pouco no coco é a causa número um daquela "deficiência de cal-mag" que na verdade não é deficiência nenhuma.'});
 
