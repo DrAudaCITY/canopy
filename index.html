@@ -355,9 +355,18 @@ footer b{color:var(--dim)}
               <option value="yx720">YXO Quantum Bar 720 W</option>
               <option value="yx1000">YXO Quantum Bar 1000 W</option>
             </optgroup>
+            <optgroup label="DNA420 — linha nacional">
+              <option value="dna35">DNA420 Quantum Board 35 W</option>
+              <option value="dna40">DNA420 Quantum Board 40 W</option>
+              <option value="dna65">DNA420 Quantum Board 65 W</option>
+              <option value="dna85">DNA420 Quantum Board 85 W</option>
+              <option value="dna120">DNA420 Quantum Board 120 W</option>
+              <option value="dna240">DNA420 Under Canopy 240 W</option>
+            </optgroup>
             <optgroup label="Placa sem ficha técnica — estimar pelo diodo">
               <option value="d_lm301evo">Samsung LM301H EVO — 2,80 µmol/J</option>
               <option value="d_lm301">Samsung LM301H / LM301B — 2,60 µmol/J</option>
+              <option value="d_lm283">Samsung LM283B — 2,40 µmol/J</option>
               <option value="d_lm281">Samsung LM281B / LM281B+ — 2,40 µmol/J</option>
               <option value="d_302h">Ledestar 302H e similares — 2,30 µmol/J</option>
               <option value="d_epi">Epileds / branco genérico — 1,80 µmol/J</option>
@@ -795,6 +804,9 @@ var DIODOS = {
   // desconta driver e óptica — fabricantes publicam ~2,7 a 2,8 na luminária.
   d_lm301evo:{eff:2.80, nome:'Samsung LM301H EVO'},
   d_lm301:  {eff:2.60, nome:'Samsung LM301H / LM301B'},
+  // LM283B é o diodo de entrada da Samsung, abaixo do LM301. Fabricantes
+  // anunciam "até 2,6", mas "até" é o melhor caso; no uso típico fica em ~2,4.
+  d_lm283:  {eff:2.40, nome:'Samsung LM283B'},
   d_lm281:  {eff:2.40, nome:'Samsung LM281B / LM281B+'},
   d_302h:   {eff:2.30, nome:'Ledestar 302H e similares'},
   d_epi:    {eff:1.80, nome:'Epileds / branco full spectrum genérico'},
@@ -827,6 +839,18 @@ var YXO = {
   yx1000:{w:1000, nome:'Quantum Bar 1000 W', cob:null}
 };
 
+/* Linha DNA420. Diodo Samsung LM283B com Deep Red 660nm, UV 395nm e IR 730nm.
+   O fabricante anuncia "até 2,6 µmol/J" — como é um teto, e não um valor de
+   operação, o cálculo usa 2,40, que é o realista para LM283B na luminária. */
+var DNA420 = {
+  dna35: {w:35,  nome:'Quantum Board 35 W',  cob:null},
+  dna40: {w:40,  nome:'Quantum Board 40 W',  cob:null},
+  dna65: {w:65,  nome:'Quantum Board 65 W',  cob:null},
+  dna85: {w:85,  nome:'Quantum Board 85 W',  cob:'0,70 × 0,70 m em vega, 0,50 × 0,50 m em floração'},
+  dna120:{w:120, nome:'Quantum Board 120 W', cob:null},
+  dna240:{w:240, nome:'Under Canopy 240 W',  cob:null}
+};
+
 (function(){                       // marcas entram no mesmo mapa das demais
   var k, m;
   for (k in LEDSIND) {
@@ -838,6 +862,12 @@ var YXO = {
     m = YXO[k];
     FIXTURES[k] = {eff:DIODOS.d_lm301evo.eff, w:m.w, nome:'YXO ' + m.nome,
                    cob:m.cob, diodo:'Samsung LM301H EVO com driver MeanWell', derivada:true};
+  }
+  for (k in DNA420) {
+    m = DNA420[k];
+    FIXTURES[k] = {eff:DIODOS.d_lm283.eff, w:m.w, nome:'DNA420 ' + m.nome,
+                   cob:m.cob, diodo:'Samsung LM283B com Deep Red, UV e IR', derivada:true,
+                   ressalva:'O fabricante anuncia <b>até 2,6 µmol/J</b>, mas "até" é teto de melhor caso, não valor de operação — o cálculo usa <b>2,40</b>, realista para LM283B na luminária. Se a sua ficha trouxer o PPF medido, prefira informá-lo.'};
   }
   for (var d in DIODOS) FIXTURES[d] = {eff:DIODOS[d].eff, w:0, nome:DIODOS[d].nome, cob:null, porDiodo:true};
 })();
@@ -1437,7 +1467,10 @@ function render(){
     : fixSpec && fixSpec.derivada
     ? '<b>' + fixSpec.nome + '</b>: ' + fmt(fixSpec.w) + ' W e diodo ' + fixSpec.diodo + ' vêm do fabricante'
       + (fixSpec.cob ? ', com cobertura indicada de <b>' + fixSpec.cob + '</b>' : '')
-      + '. A eficácia de <b>' + fmt(fixSpec.eff,2) + ' µmol/J é derivada do diodo</b>, porque o fabricante não publica PPF nem µmol/J. Se a sua ficha trouxer o PPF, prefira informá-lo — e confira o consumo real na tomada.'
+      + '. ' + (fixSpec.ressalva
+          ? fixSpec.ressalva
+          : 'A eficácia de <b>' + fmt(fixSpec.eff,2) + ' µmol/J é derivada do diodo</b>, porque o fabricante não publica PPF nem µmol/J. Se a sua ficha trouxer o PPF, prefira informá-lo.')
+      + ' Confira também o consumo real na tomada.'
     : fixSpec
     ? 'VIVOSUN ' + fixSpec.nome + ': <b>' + fmt(fixSpec.eff,2) + ' µmol/J</b> publicados pelo fabricante'
       + (fixSpec.cob ? ', cobertura indicada de <b>' + fixSpec.cob + '</b> em floração' : '')
