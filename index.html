@@ -346,7 +346,16 @@ footer b{color:var(--dim)}
               <option value="ppf">Vou informar o PPF (µmol/s) da ficha técnica</option>
               <option value="custom">Vou informar a eficácia (µmol/J)</option>
             </optgroup>
+            <optgroup label="YXO — linha nacional">
+              <option value="yx240">YXO Quantum Bar 240 W</option>
+              <option value="yx320">YXO Quantum Bar 320 W</option>
+              <option value="yx480">YXO Quantum Bar 480 W</option>
+              <option value="yx640">YXO Quantum Bar 640 W</option>
+              <option value="yx720">YXO Quantum Bar 720 W</option>
+              <option value="yx1000">YXO Quantum Bar 1000 W</option>
+            </optgroup>
             <optgroup label="Placa sem ficha técnica — estimar pelo diodo">
+              <option value="d_lm301evo">Samsung LM301H EVO — 2,80 µmol/J</option>
               <option value="d_lm301">Samsung LM301H / LM301B — 2,60 µmol/J</option>
               <option value="d_lm281">Samsung LM281B / LM281B+ — 2,40 µmol/J</option>
               <option value="d_302h">Ledestar 302H e similares — 2,30 µmol/J</option>
@@ -781,6 +790,9 @@ var LUX_POR_PPFD = 67;
    Valores no nível da LUMINÁRIA (já com perda de driver e óptica), não do diodo
    isolado — por isso ficam abaixo do que o datasheet do LED anuncia. */
 var DIODOS = {
+  // O EVO é medido em 3,14 µmol/J no DIODO. Aqui tudo é nível-luminária, então
+  // desconta driver e óptica — fabricantes publicam ~2,7 a 2,8 na luminária.
+  d_lm301evo:{eff:2.80, nome:'Samsung LM301H EVO'},
   d_lm301:  {eff:2.60, nome:'Samsung LM301H / LM301B'},
   d_lm281:  {eff:2.40, nome:'Samsung LM281B / LM281B+'},
   d_302h:   {eff:2.30, nome:'Ledestar 302H e similares'},
@@ -800,11 +812,30 @@ var LEDSIND = {
   li_pl720:{w:720, d:'d_lm281', nome:'PL720 Samsung LM281B+'},
   li_600s: {w:600, d:'d_lm281', nome:'600 W Samsung LM281B+'}
 };
-(function(){                       // LEDS Indoor entra no mesmo mapa das demais
-  for (var k in LEDSIND) {
-    var m = LEDSIND[k];
+/* Linha YXO (YXO Yuxinou). Potências da linha declarada pelo fabricante e diodo
+   LM301H EVO com driver MeanWell, como vendido no Brasil. A eficácia é derivada
+   do diodo: os anúncios da fábrica trazem campos preenchidos errado — chegam a
+   listar "1678 µmol/J", número impossível, já que o teto teórico é ~4,7. */
+var YXO = {
+  yx240: {w:240,  nome:'Quantum Bar 240 W', cob:'~1 m² em floração'},
+  yx320: {w:320,  nome:'Quantum Bar 320 W', cob:null},
+  yx480: {w:480,  nome:'Quantum Bar 480 W', cob:null},
+  yx640: {w:640,  nome:'Quantum Bar 640 W', cob:null},
+  yx720: {w:720,  nome:'Quantum Bar 720 W', cob:null},
+  yx1000:{w:1000, nome:'Quantum Bar 1000 W', cob:null}
+};
+
+(function(){                       // marcas entram no mesmo mapa das demais
+  var k, m;
+  for (k in LEDSIND) {
+    m = LEDSIND[k];
     FIXTURES[k] = {eff:DIODOS[m.d].eff, w:m.w, nome:'LEDS Indoor ' + m.nome,
                    cob:null, diodo:DIODOS[m.d].nome, derivada:true};
+  }
+  for (k in YXO) {
+    m = YXO[k];
+    FIXTURES[k] = {eff:DIODOS.d_lm301evo.eff, w:m.w, nome:'YXO ' + m.nome,
+                   cob:m.cob, diodo:'Samsung LM301H EVO com driver MeanWell', derivada:true};
   }
   for (var d in DIODOS) FIXTURES[d] = {eff:DIODOS[d].eff, w:0, nome:DIODOS[d].nome, cob:null, porDiodo:true};
 })();
@@ -1296,6 +1327,11 @@ function render(){
 
   if (s.nute === 'tea' || s.nute === 'dry' || s.nute === 'orgliq') notes.push({t:'info',i:'🧪',h:'Programas orgânicos trocam peso por terpenos',b:'Trabalhar com ' + NUTE_NAME[s.nute] + ' costuma render ' + fmt((1-NUTES[s.nute])*100) + '% menos que um programa de sais em peso bruto. Muita gente faz essa troca de propósito, por sabor e aroma — só saiba que ela já está embutida no número acima.'});
 
+  // Trava de sanidade física: o teto teórico de eficácia em PAR é ~4,7 µmol/J e
+  // nenhuma luminária real passa de ~3,5. Anúncio que promete mais está errado
+  // ou mentindo — e esse número multiplica direto na produção estimada.
+  if (!r.medido && s.eff > 3.5) notes.push({t:'bad',i:'🚫',h:'Essa eficácia não existe',b:'<b>' + fmt(s.eff,2) + ' µmol/J</b> é fisicamente impossível: o teto teórico em PAR fica perto de 4,7 µmol/J com 100% de eficiência elétrica, e as melhores luminárias do mundo chegam a 3,2 ou 3,5. Se veio de anúncio, o campo está preenchido errado — é comum ver ficha de fábrica listando valores absurdos. Confira o PPF e os watts reais, ou meça o dossel com luxímetro.'});
+
   if (!r.medido && (r.brandFix = FIXTURES[s.fixMode]) && (r.brandFix.porDiodo || r.brandFix.derivada))
     notes.push({t:'warn',i:'🔌',h:'Confirme o consumo na tomada',b:'Sua eficácia aqui é <b>estimada pelo diodo</b>, não medida. Isso é aceitável — o que costuma destruir a conta é a <b>potência</b>: placa de marketplace é anunciada com 2 a 4× o consumo real, e um "1000 W" normalmente puxa de 100 a 150 W. Um medidor de tomada custa pouco e corrige o maior erro do cálculo. Melhor ainda: meça o dossel com luxímetro e troque para o primeiro modo.'});
 
@@ -1362,7 +1398,9 @@ function render(){
     : fixSpec && fixSpec.porDiodo
     ? 'Estimativa pelo diodo <b>' + fixSpec.nome + '</b>: ' + fmt(fixSpec.eff,2) + ' µmol/J no nível da luminária, já descontando driver e óptica. É o melhor palpite quando não há ficha — mas confira o <b>consumo real na tomada</b>, porque é ali que os anúncios mais mentem.'
     : fixSpec && fixSpec.derivada
-    ? '<b>' + fixSpec.nome + '</b>: ' + fmt(fixSpec.w) + ' W e diodo ' + fixSpec.diodo + ' vêm do fabricante. A eficácia de <b>' + fmt(fixSpec.eff,2) + ' µmol/J é derivada do diodo</b>, porque a LEDS Indoor não publica PPF nem µmol/J. Se você tiver o PPF, prefira informá-lo.'
+    ? '<b>' + fixSpec.nome + '</b>: ' + fmt(fixSpec.w) + ' W e diodo ' + fixSpec.diodo + ' vêm do fabricante'
+      + (fixSpec.cob ? ', com cobertura indicada de <b>' + fixSpec.cob + '</b>' : '')
+      + '. A eficácia de <b>' + fmt(fixSpec.eff,2) + ' µmol/J é derivada do diodo</b>, porque o fabricante não publica PPF nem µmol/J. Se a sua ficha trouxer o PPF, prefira informá-lo — e confira o consumo real na tomada.'
     : fixSpec
     ? 'VIVOSUN ' + fixSpec.nome + ': <b>' + fmt(fixSpec.eff,2) + ' µmol/J</b> publicados pelo fabricante'
       + (fixSpec.cob ? ', cobertura indicada de <b>' + fixSpec.cob + '</b> em floração' : '')
