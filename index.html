@@ -943,6 +943,20 @@ var ENV = {precise:{mult:1.10,name:'controle de clima preciso'}, decent:{mult:1.
    modelo escala pelo dossel, não pela folha. */
 var GUELPH_A = 87.2, GUELPH_B = 5.553, GUELPH_DIAS = 81;
 
+/* Densidade do experimento: "0.09 m2/plant" = 11,1 plantas/m², vasos de 1 galão
+   e espaçamento de 30 cm. Esse número é o que conserta o intercepto.
+
+   O termo A (87,2 g/m²) não é produção que a área gera sozinha — é a produção
+   das PLANTAS que estavam ali, na densidade deles. Multiplicá-lo por área,
+   como eu fazia, criava colheita do nada: com a mesma luminária numa estufa
+   maior o total subia, embora os fótons fossem exatamente os mesmos.
+
+   Corrigido, o intercepto vira 87,2 / 11,1 = 7,85 g por planta, e o total passa
+   a depender só de quantas plantas existem e de quantos fótons chegam — as duas
+   coisas que realmente produzem. Área vazia deixa de render. */
+var GUELPH_DENS = 11.1;
+var GUELPH_G_PLANTA = GUELPH_A / GUELPH_DENS;
+
 /* Multiplicadores de manejo, relativos às condições do estudo (= 1,00).
    O estudo é o ancoradouro: "intermediário" reproduz o que foi medido. */
 var SKILL_SPREAD = {0.62:0.30, 1.00:0.23, 1.35:0.18, 1.70:0.15};
@@ -1010,8 +1024,23 @@ function calc(s){
   r.molesPerM2 = r.dli * r.flowerDays;
   r.totalMoles = r.molesPerM2 * r.canopyM2;
 
-  // Base Guelph, reescalada para a duração de floração informada.
-  r.baseM2 = (GUELPH_A + GUELPH_B * r.dli) * (r.flowerDays / GUELPH_DIAS);
+  /* Base Guelph em duas parcelas, cada uma ligada ao que de fato a produz:
+       plantas → intercepto, por planta e não por m²
+       fótons  → termo linear, que já é DLI × área = luz total entregue
+     Como DLI × dossel = PPF × aproveitamento × horas, o segundo termo independe
+     do tamanho da estufa: espalhar a mesma luz numa área maior não cria colheita.
+     O teto na densidade do estudo evita que amontoar plantas infle o intercepto. */
+  r.plantasEfetivas = Math.min(s.np, GUELPH_DENS * r.canopyM2);
+  /* Interceptação: fóton que cai em piso vazio não vira colheita. Numa estufa
+     refletiva parte volta e ainda é aproveitada, daí o resgate de 30% — sem
+     isso o dossel incompleto seria punido como se a luz sumisse por completo. */
+  r.intercept = s.cov + (1 - s.cov) * 0.30;
+  var porPlantas = GUELPH_G_PLANTA * r.plantasEfetivas;
+  var porLuz     = GUELPH_B * r.dli * r.canopyM2 * r.intercept;
+  r.porLuz = porLuz * (r.flowerDays / GUELPH_DIAS);
+  r.baseTotal = (porPlantas + porLuz) * (r.flowerDays / GUELPH_DIAS);
+  r.baseM2    = r.canopyM2 > 0 ? r.baseTotal / r.canopyM2 : 0;
+  r.densidade = r.canopyM2 > 0 ? s.np / r.canopyM2 : 0;
 
   var sub = SUBS[s.sub], tr = TRAIN[s.train], ty = TYPES[s.type] || TYPES.hybrid;
   var mult = 1;
@@ -1034,7 +1063,7 @@ function calc(s){
   r.parts = parts;
 
   r.gm2base = r.baseM2 * s.skill * r.mult;
-  r.yield = r.gm2base * r.canopyM2;
+  r.yield = r.baseTotal * s.skill * r.mult;
   // g/mol vira RESULTADO derivado, não mais uma entrada do modelo.
   r.gmol = r.totalMoles > 0 ? r.yield / r.totalMoles : 0;
   var spread = SKILL_SPREAD[s.skill] || 0.2;
@@ -1321,7 +1350,12 @@ function render(){
 
   if (r.co2Wasted) notes.push({t:'warn',i:'☁️',h:'O CO₂ está sendo desperdiçado',b:'CO₂ só compensa acima de aproximadamente 800 de PPFD e você está em ' + n(p) + '. Resolva a luz primeiro — o modelo já reduziu o benefício do CO₂ a um quarto do valor normal.'});
 
-  if (s.cov < 0.8) notes.push({t:'warn',i:'🌿',h:'A cobertura está te custando peso real',b:'Com ' + n(s.cov*100) + '% de cobertura você cultiva em ' + fmt(r.canopyM2,2) + ' m² de um piso de ' + fmt(r.floorM2,2) + ' m². Chegar a 90% valeria cerca de <b>+' + fmt(r.yield*(0.90/s.cov-1)) + ' g</b> com a luz que você já tem.'});
+  if (s.cov < 0.85) {
+    // Só a parcela de luz responde à cobertura; a das plantas não muda.
+    var int90 = 0.90 + 0.10 * 0.30;
+    var ganhoCob = r.porLuz * (int90 / r.intercept - 1) * s.skill * r.mult;
+    notes.push({t:'warn',i:'🌿',h:'A cobertura está te custando peso real',b:'Com ' + n(s.cov*100) + '% de cobertura, parte dos fótons cai em piso vazio e não vira colheita — numa estufa refletiva você recupera algo, mas não tudo. Fechar o dossel até 90% vale cerca de <b>+' + fmt(ganhoCob) + ' g</b> com a mesma luminária, sem gastar um watt a mais. É o upgrade mais barato que existe: mais plantas, vega mais longa ou manejo mais aberto.'});
+  }
 
   if (s.env === 'minimal') notes.push({t:'warn',i:'🌡️',h:'O controle de clima é o elo fraco',b:'Temperatura e umidade soltas custam cerca de 15% em relação a uma sala com VPD gerenciado — algo como <b>' + fmt(r.yield*0.176) + ' g</b> aqui. Um desumidificador e um exaustor no controlador são a produtividade mais barata que dá para comprar.'});
 
