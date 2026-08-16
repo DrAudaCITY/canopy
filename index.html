@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Calculadora de cultivo indoor: estime produtividade em g/m² e g/W a partir da estufa, do LED, da genética, do substrato e da linha de fertilizante — e confira se tudo cabe na tenda.">
-<meta name="theme-color" content="#14161f">
+<meta name="theme-color" content="#0a0c09">
 <meta name="color-scheme" content="dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20rx%3D%225%22%20fill%3D%22%23e8b04b%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%2320180a%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2020V9%22%2F%3E%3Cpath%20d%3D%22M12%2012C12%2012%207.5%2011%205.5%207.5c3.6-1%206.5%201.8%206.5%204.5Z%22%2F%3E%3Cpath%20d%3D%22M12%2012c0%200%204.5-1%206.5-4.5-3.6-1-6.5%201.8-6.5%204.5Z%22%2F%3E%3Cpath%20d%3D%22M12%209c0%200%203-1.8%203-4.5C12%204.5%2012%209%2012%209Z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-50%20-54%20100%20104%22%3E%3Crect%20x%3D%22-50%22%20y%3D%22-54%22%20width%3D%22100%22%20height%3D%22104%22%20rx%3D%2218%22%20fill%3D%22%230a0c09%22%2F%3E%3Cg%20fill%3D%22%23d9b64c%22%3E%3Cg%20transform%3D%22scale(.42)%22%3E%3Cpath%20id%3D%22l%22%20d%3D%22M0%2C0%20C-6%2C-24%20-9%2C-52%200%2C-104%20C9%2C-52%206%2C-24%200%2C0%20Z%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22rotate(-34)%20scale(.36)%22%3E%3Cuse%20href%3D%22%23l%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22rotate(34)%20scale(.36)%22%3E%3Cuse%20href%3D%22%23l%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22rotate(-66)%20scale(.26)%22%3E%3Cuse%20href%3D%22%23l%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22rotate(66)%20scale(.26)%22%3E%3Cuse%20href%3D%22%23l%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3Cpath%20d%3D%22M0%2C0%20V30%22%20stroke%3D%22%238a6a1c%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E">
 <link rel="canonical" href="https://draudacity.github.io/canopy/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Canopy">
@@ -20,35 +20,37 @@
 <title>Canopy</title>
 <style>
 :root{
-  /* grow room at lights-off — indigo-charcoal, not neutral black */
-  --ground:#14161f;
-  --surface:#1b1e2b;
-  --surface2:#232739;
-  --line:#2f3448;
-  --line-soft:#262b3c;
-  --txt:#e8e9f2;
-  --dim:#9aa0b8;
-  --dimmer:#6b7292;
+  /* preto da marca, com leve viés quente-esverdeado — não é cinza neutro */
+  --ground:#0a0c09;
+  --surface:#111410;
+  --surface2:#181c16;
+  --line:#282e21;
+  --line-soft:#1e2318;
+  --txt:#f2efe4;        /* creme quente, não branco puro */
+  --dim:#a8a189;
+  --dimmer:#6f6a57;
 
-  /* accent = harvest amber. cured flower is gold, not green. */
-  --gold:#e8b04b;
-  --gold-deep:#b98526;
+  /* ouro da marca, em três profundidades */
+  --gold:#d9b64c;
+  --gold-lt:#f0dc9e;
+  --gold-dp:#8f7220;
 
-  /* semantic, kept separate from the accent */
-  --ok:#4ade80;
-  --warn:#f5a524;
-  --bad:#f2555a;
-  --info:#63b3ed;
+  /* semânticas, deslocadas do ouro para não competirem com a marca */
+  --ok:#6bbf59;
+  --warn:#e08a2c;
+  --bad:#dd5449;
+  --info:#79a9d0;
 
-  /* PAR spectrum — the light scale is colored by what it measures */
-  --sp1:#3c327a;
-  --sp2:#256e73;
-  --sp3:#3f9142;
-  --sp4:#b7791f;
-  --sp5:#9b2c2c;
+  /* espectro PAR — a escala de luz é colorida pelo que ela mede */
+  --sp1:#3a3070;
+  --sp2:#236469;
+  --sp3:#3c8a3f;
+  --sp4:#a8701c;
+  --sp5:#8f2626;
 
   --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,"Helvetica Neue",sans-serif;
+  --serif:"Cormorant Garamond","Iowan Old Style",Constantia,Cambria,Georgia,"Times New Roman",serif;
   --r:13px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -70,29 +72,53 @@ body{
   letter-spacing:-.01em;
 }
 
-/* ── header ───────────────────────────── */
+/* ── marca ────────────────────────────── */
 header{
+  position:relative;
   border-bottom:1px solid var(--line);
-  background:linear-gradient(180deg,#191c28,var(--ground));
-  padding:18px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  background:radial-gradient(120% 150% at 50% 0%,#141810 0%,var(--ground) 62%);
+  padding:34px 24px 26px;
+  display:flex;flex-direction:column;align-items:center;text-align:center;
 }
-.mark{
-  width:36px;height:36px;border-radius:10px;flex:none;position:relative;
-  background:linear-gradient(150deg,var(--gold),var(--gold-deep));
-  display:grid;place-items:center;
+.mark{width:clamp(96px,17vw,132px);height:auto;display:block;margin-bottom:-10px}
+h1{
+  font-family:var(--serif);
+  font-size:clamp(46px,9vw,74px);
+  font-weight:500;line-height:.96;letter-spacing:.005em;
+  color:var(--txt);
 }
-.mark svg{width:20px;height:20px;display:block}
-h1{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
-header .sub{color:var(--dim);font-size:12.5px;margin-top:2px}
+/* assinatura principal, ladeada por fios de ouro */
+.tag{
+  display:flex;align-items:center;gap:14px;
+  margin-top:12px;width:100%;max-width:430px;
+}
+.tag::before,.tag::after{
+  content:"";flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold-dp));
+}
+.tag::after{background:linear-gradient(90deg,var(--gold-dp),transparent)}
+.tag span{
+  font-size:clamp(11px,2.4vw,14px);font-weight:600;text-transform:uppercase;
+  letter-spacing:.17em;color:var(--txt);white-space:nowrap;
+}
+.tag2{
+  margin-top:9px;font-size:clamp(9px,2vw,11.5px);font-weight:600;text-transform:uppercase;
+  letter-spacing:.15em;color:var(--gold);
+}
 .units{
-  margin-left:auto;display:flex;background:var(--surface2);
+  position:absolute;top:18px;right:20px;
+  display:flex;background:var(--surface2);
   border:1px solid var(--line);border-radius:9px;padding:3px;gap:2px;
+}
+@media(max-width:620px){
+  header{padding-top:58px}
+  .units{top:14px;right:50%;transform:translateX(50%)}
 }
 .units button{
   background:none;border:0;color:var(--dim);font:inherit;font-size:12.5px;font-weight:600;
   padding:6px 14px;border-radius:6px;cursor:pointer;
 }
-.units button.on{background:var(--gold);color:#20180a}
+.units button.on{background:var(--gold);color:#14100a}
 
 /* ── layout ───────────────────────────── */
 .wrap{
@@ -144,7 +170,7 @@ input[type=range]{padding:0;height:26px;background:none;border:0;accent-color:va
 .chk input{width:auto;accent-color:var(--gold)}
 
 /* ── hero readout ─────────────────────── */
-.hero{padding:18px 16px 17px;background:linear-gradient(155deg,#242437,var(--surface))}
+.hero{padding:18px 16px 17px;background:linear-gradient(155deg,#1e2318,var(--surface))}
 .hero .lab{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--dim)}
 .hero .big{font-size:46px;font-weight:600;line-height:1.02;margin:8px 0 4px;color:var(--gold)}
 .hero .big small{font-size:17px;font-weight:500;color:var(--dim);font-family:var(--sans)}
@@ -164,7 +190,7 @@ input[type=range]{padding:0;height:26px;background:none;border:0;accent-color:va
 .bar{height:10px;border-radius:5px;position:relative;overflow:hidden;display:flex}
 .bar i{height:100%}
 .mark-pin{
-  position:absolute;top:-4px;width:3px;height:18px;background:#fff;border-radius:2px;
+  position:absolute;top:-4px;width:3px;height:18px;background:var(--txt);border-radius:2px;
   box-shadow:0 0 0 2px var(--surface),0 0 8px rgba(0,0,0,.6);
 }
 .ticks{position:relative;height:14px;margin-top:6px;font-size:10px;color:var(--dimmer);font-family:var(--mono)}
@@ -194,7 +220,7 @@ input[type=range]{padding:0;height:26px;background:none;border:0;accent-color:va
 .note.bad{border-left-color:var(--bad)}
 .note.info{border-left-color:var(--info)}
 .note .ico{flex:none;font-size:13px;line-height:1.5}
-.note b{color:#fff;font-weight:700}
+.note b{color:var(--txt);font-weight:700}
 .note .num{font-family:var(--mono);font-weight:600}
 
 /* ── table ────────────────────────────── */
@@ -215,7 +241,7 @@ tr.flush td{color:var(--info)}
 /* ── mobile sticky total ──────────────── */
 .dock{
   position:fixed;left:0;right:0;bottom:0;display:none;z-index:20;
-  background:rgba(20,22,31,.94);backdrop-filter:blur(10px);
+  background:rgba(10,12,9,.95);backdrop-filter:blur(10px);
   border-top:1px solid var(--line);padding:11px 20px;
   justify-content:space-between;align-items:baseline;gap:16px;
 }
@@ -233,15 +259,27 @@ footer b{color:var(--dim)}
 
 
 <header>
-  <div class="mark">
-    <svg viewBox="0 0 24 24" fill="none" stroke="#20180a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 21V9"/><path d="M12 12C12 12 7 11 5 7c4-1 7 2 7 5Z"/><path d="M12 12c0 0 5-1 7-5-4-1-7 2-7 5Z"/><path d="M12 9c0 0 3.5-2 3.5-5C12 4 12 9 12 9Z"/>
-    </svg>
-  </div>
-  <div>
-    <h1>Canopy</h1>
-    <div class="sub">Produtividade, luz e espaço para cultivo indoor</div>
-  </div>
+  <svg class="mark" viewBox="-62 -116 124 132" role="img" aria-label="Canopy">
+    <defs>
+      <linearGradient id="au" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#f3e0a8"/>
+        <stop offset=".42" stop-color="#d9b64c"/>
+        <stop offset="1" stop-color="#8a6a1c"/>
+      </linearGradient>
+      <linearGradient id="au-h" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="transparent"/>
+        <stop offset=".5" stop-color="#7d6a2a"/>
+        <stop offset="1" stop-color="transparent"/>
+      </linearGradient>
+      <!-- o contorno do leaflet é gerado por fórmula no script (id="lf") -->
+    </defs>
+    <path d="M-58,4 H58" stroke="url(#au-h)" stroke-width="2.5" fill="none"/>
+    <g id="leaf" fill="url(#au)"></g>
+    <path d="M0,0 V13" stroke="#8a6a1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  </svg>
+  <h1>Canopy</h1>
+  <div class="tag"><span>Calcule. Cultive. Colha.</span></div>
+  <div class="tag2">Seus dados. Sua produção. Seus resultados.</div>
   <div class="units" role="group" aria-label="Unidades">
     <button id="u-met" class="on" type="button">m / L</button>
     <button id="u-imp" type="button">pés / gal</button>
@@ -600,6 +638,47 @@ footer b{color:var(--dim)}
 (function(){
 'use strict';
 var $ = function(id){ return document.getElementById(id); };
+
+/* ── marca ─────────────────────────────────
+   O leaflet é desenhado por fórmula em vez de coordenadas escritas à mão:
+   um perfil de largura que abre rápido e afina até a ponta, com dentes
+   inclinados para a ponta (o ápice fica adiante da reentrância, não no meio). */
+(function desenhaFolha(){
+  var g = document.getElementById('leaf');
+  if (!g) return;
+
+  function leaflet(len, wide, dentes){
+    // perfil de largura: abre devagar na base, pico a ~40% do comprimento, afina até a ponta
+    var perfil = function(t){ return Math.pow(t, 0.6) * Math.pow(1 - t, 0.9); };
+    var max = 0, i;
+    for (i = 0; i <= 200; i++) max = Math.max(max, perfil(i / 200));
+    var w = function(t){ return wide * perfil(t) / max; };
+
+    var dir = [], k;
+    for (k = 0; k < dentes; k++) {
+      var tn = k / dentes;              // reentrância — rasa, não corta até o nervo
+      var ta = (k + 0.72) / dentes;     // ápice adiantado → dente aponta para a ponta
+      dir.push([w(tn) * 0.76, -len * tn]);
+      dir.push([w(ta),        -len * ta]);
+    }
+    dir.push([0, -len]);
+
+    var d = 'M0,0';
+    for (k = 0; k < dir.length; k++) d += 'L' + dir[k][0].toFixed(1) + ',' + dir[k][1].toFixed(1);
+    for (k = dir.length - 2; k >= 0; k--) d += 'L' + (-dir[k][0]).toFixed(1) + ',' + dir[k][1].toFixed(1);
+    return d + 'Z';
+  }
+
+  // ângulo, escala e número de dentes por par de leaflets
+  var arranjo = [[0,1,13],[32,.88,12],[-32,.88,12],[61,.68,10],[-61,.68,10],[88,.45,8],[-88,.45,8]];
+  var svgns = 'http://www.w3.org/2000/svg';
+  arranjo.sort(function(a,b){ return Math.abs(b[0]) - Math.abs(a[0]); }).forEach(function(a){
+    var p = document.createElementNS(svgns, 'path');
+    p.setAttribute('d', leaflet(104, 9.5, a[2]));
+    p.setAttribute('transform', 'rotate(' + a[0] + ') scale(' + a[1] + ')');
+    g.appendChild(p);
+  });
+})();
 var clamp = function(v,a,b){ return Math.max(a, Math.min(b, v)); };
 var LOC = 'pt-BR';
 
