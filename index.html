@@ -110,9 +110,11 @@ h1{
   display:flex;background:var(--surface2);
   border:1px solid var(--line);border-radius:9px;padding:3px;gap:2px;
 }
+/* No celular o seletor sai do canto e vira o último item do header, para a
+   marca ocupar a primeira dobra em vez de um controle de unidades. */
 @media(max-width:620px){
-  header{padding-top:58px}
-  .units{top:14px;right:50%;transform:translateX(50%)}
+  header{padding:28px 20px 22px}
+  .units{position:static;transform:none;margin-top:17px}
 }
 .units button{
   background:none;border:0;color:var(--dim);font:inherit;font-size:12.5px;font-weight:600;
@@ -125,7 +127,10 @@ h1{
   display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
   gap:22px;padding:22px 24px;max-width:1520px;margin:0 auto;align-items:start;
 }
-@media(max-width:1060px){.wrap{grid-template-columns:1fr}}
+/* minmax(0,…) e não 1fr puro: "1fr" equivale a minmax(auto,1fr), e o auto deixa
+   o min-content do conteúdo esticar a faixa. Os <select> têm largura mínima
+   ditada pela opção mais longa, e era isso que estourava a página no celular. */
+@media(max-width:1060px){.wrap{grid-template-columns:minmax(0,1fr)}}
 .col-out{position:sticky;top:22px}
 @media(max-width:1060px){.col-out{position:static}}
 
@@ -145,10 +150,12 @@ h1{
 .body{padding:15px 16px;display:flex;flex-direction:column;gap:13px}
 
 /* ── form ─────────────────────────────── */
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
-.grid.three{grid-template-columns:1fr 1fr 1fr}
-@media(max-width:420px){.grid.three{grid-template-columns:1fr 1fr}}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:13px;min-width:0}
+.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:420px){.grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .f{display:flex;flex-direction:column;gap:6px;min-width:0}
+/* o select não pode impor a largura da sua opção mais longa ao layout */
+select{min-width:0;max-width:100%}
 optgroup{background:var(--ground);color:var(--dim);font-style:normal;font-weight:700}
 option{background:var(--surface2);color:var(--txt);font-weight:400}
 .f.full{grid-column:1/-1}
