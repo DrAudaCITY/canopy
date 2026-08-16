@@ -646,7 +646,7 @@ footer b{color:var(--dim)}
   <div class="card">
     <h2>Rega dia a dia</h2>
     <div class="body">
-      <div class="notes"><div class="note info" id="rega-ritmo"></div></div>
+      <div class="notes" id="rega-notas"></div>
       <div class="scroll diario">
         <table>
           <thead><tr><th>Dia</th><th>Fase</th><th>Rega</th><th>Por planta</th><th>Total</th><th>EC</th></tr></thead>
@@ -1084,12 +1084,22 @@ function faseDoDia(s, r, dia){
   return {n:'Maturação', f:0.90, ecF:0.85};
 }
 
+/* Fração do vaso que a raiz realmente ocupa. Uma muda não seca o vaso inteiro —
+   ela seca uma bola pequena em volta do caule. É por isso que o manual dos bons
+   cultivadores manda regar um círculo estreito e ir alargando conforme a raiz
+   avança. Sem isso, o modelo de déficit acha que o vaso ainda tem água e manda
+   ficar semanas sem regar, o que mata a planta. */
+function raizFrac(s, r, dia){
+  var plena = s.isAuto ? 30 : 10 + r.vegDays * 0.75;   // dia em que a raiz toma o vaso
+  return clamp(0.06 + 0.94 * Math.pow(Math.min(1, dia / plena), 0.7), 0.06, 1);
+}
+
 function regaDiaria(s, r){
   var cfg = REGA[s.sub] || REGA.coco;
   var potL = POT_L[s.pot] || 19;
   var netPico = r.dailyL / s.np;                 // L/planta/dia, transpiração pura
   var total = Math.round(r.cycleDays);
-  var dias = [], deficit = 0, d;
+  var dias = [], deficit = 0, d, semRegar = 0;
 
   for (d = 1; d <= total; d++){
     var fase = faseDoDia(s, r, d);
@@ -1108,13 +1118,22 @@ function regaDiaria(s, r){
       linha.porEvento = bruto / linha.eventos;
       linha.totalDia = bruto * s.np;
     } else {
-      // ciclo seco-úmido: acumula até consumir a reserva utilizável do vaso
-      deficit += net;
-      if (deficit >= potL * cfg.reserva || d === total){
+      // Ciclo seco-úmido, medido contra a zona de raiz REAL, não contra o vaso todo.
+      var raiz = raizFrac(s, r, d);
+      var gatilho = potL * cfg.reserva * raiz;
+      deficit += net; semRegar++;
+      // Trava de segurança: muda nunca passa 3 dias seca, por mais lenta que
+      // seja a conta — é o erro que mata planta nova em vaso grande.
+      // Teto de dias sem regar. Mesmo com pouca transpiração não se deixa o vaso
+      // passar da conta: substrato muito seco fica hidrofóbico, o sal concentra
+      // e a raiz perde contato com a solução. 5 dias é o limite prático.
+      var limiteDias = raiz < 0.35 ? 3 : (raiz < 0.7 ? 4 : 5);
+      if (deficit >= gatilho || semRegar >= limiteDias || d === total){
         linha.regar = true; linha.eventos = 1;
         linha.porEvento = deficit * (1 + Math.min(s.ro, 0.15));
         linha.totalDia = linha.porEvento * s.np;
-        deficit = 0;
+        linha.circulo = raiz < 0.45;      // ainda se rega só em volta do caule
+        deficit = 0; semRegar = 0;
       }
     }
     dias.push(linha);
@@ -1343,7 +1362,7 @@ function render(){
     var cls = (x.regar ? '' : 'seca') + (marco ? ' marco' : '');
     var quando = rg.cfg.tipo === 'reservatorio'
         ? (x.troca ? 'trocar' : 'repor')
-        : x.regar ? (x.eventos > 1 ? x.eventos + '×' : 'sim') : '—';
+        : x.regar ? (x.circulo ? 'círculo' : (x.eventos > 1 ? x.eventos + '×' : 'sim')) : '—';
     return '<tr' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '>'
       + '<td class="wk">' + x.dia + '</td>'
       + '<td class="stage">' + x.fase + '</td>'
@@ -1354,17 +1373,28 @@ function render(){
   }).join('');
 
   var ref = rg.ref;
-  $('rega-ritmo').innerHTML = rg.cfg.tipo === 'reservatorio'
+  var ritmo = rg.cfg.tipo === 'reservatorio'
     ? '<span class="ico">🪣</span><span><b>DWC não se rega.</b> No pico o sistema evapora cerca de <b>' + vol(ref.totalDia) + ' por dia</b> — reponha com água em pH corrigido, sem nutriente, senão a EC sobe sozinha conforme a água some. Troque o reservatório inteiro a cada 7 dias e mantenha a solução entre 18 e 20 °C: acima disso o oxigênio dissolvido cai e vem podridão de raiz.</span>'
     : rg.cfg.tipo === 'diaria'
     ? '<span class="ico">💧</span><span><b>Ritmo em ' + r.sub.name + ': todo dia, sem exceção.</b> No pico da engorda são <b>' + ref.eventos + ' rega' + (ref.eventos>1?'s':'') + ' de ' + vol(ref.porEvento) + ' por planta</b>, somando ' + vol(ref.totalDia) + ' no dia para as ' + fmt(s.np) + ' plantas. Substrato inerte não tem reserva: se secar, a raiz para. São <b>' + fmt(rg.regas) + ' dias de rega</b> no ciclo.</span>'
     : '<span class="ico">🌱</span><span><b>Ritmo em ' + r.sub.name + ': ciclo seco-úmido.</b> No pico da engorda dá rega a cada <b>' + fmt(rg.intervalo) + ' dia' + (rg.intervalo>1?'s':'') + '</b>, com <b>' + vol(ref.porEvento) + ' por planta</b> (' + vol(ref.totalDia) + ' no total). Na vega o intervalo é bem maior e aperta sozinho conforme a planta cresce — a tabela mostra dia a dia. São <b>' + fmt(rg.regas) + ' regas</b> no ciclo inteiro.</span>';
 
+  // Reconstrói o bloco inteiro a cada render — nunca acumula.
+  var avisosRega = ['<div class="note info">' + ritmo + '</div>'];
+  if (rg.cfg.tipo !== 'reservatorio' && rg.dias.some(function(x){ return x.circulo; }))
+    avisosRega.push('<div class="note warn"><span class="ico">🎯</span><span><b>Nos dias marcados "círculo", regue só em volta do caule.</b> A raiz nova ocupa uma bola pequena de substrato, não o vaso inteiro. Molhar tudo deixa substrato encharcado sem raiz nenhuma para beber, e é assim que se afoga muda em vaso grande. Comece num círculo de uns 5 cm e vá alargando conforme a planta cresce — por volta do dia ' + fmt(Math.max(10, s.isAuto ? 14 : Math.round(r.vegDays*0.45))) + ' já pode molhar o vaso todo.</span></div>');
+
+  if (s.isAuto && (POT_L[s.pot] || 19) >= 15)
+    avisosRega.push('<div class="note bad"><span class="ico">⏳</span><span><b>Automática em vaso grande é o combo mais arriscado.</b> Você não transplanta auto, então ela passa as primeiras semanas num vaso enorme e quase vazio de raiz. Excesso de água agora trava a planta — e automática <b>não tem tempo de se recuperar</b>, o relógio dela não espera. Duas semanas travadas custam a colheita inteira. Se estiver em dúvida, regue menos.</span></div>');
+
+  $('rega-notas').innerHTML = avisosRega.join('');
+
   $('rega-nota').innerHTML = rg.cfg.tipo === 'reservatorio'
     ? 'O volume acima é reposição por evaporação e transpiração. Meça a EC antes e depois de repor: se ela subiu, a planta bebeu mais água que sal e você pode diluir.'
     : rg.cfg.tipo === 'diaria'
     ? 'Volumes já incluem os ' + fmt(s.ro*100) + '% de escoamento. Regue até ver drenar pelo fundo e confira a EC do que sai: subiu muito acima da EC de entrada, tem sal acumulando e a próxima rega pede mais volume, não menos. Em vaso de ' + fmt(rg.potL) + ' L, mais de ' + rg.cfg.evMax + ' regas por dia só faz sentido com gotejamento automatizado.'
-    : 'Levante o vaso: peso é o melhor medidor de umidade que existe e é de graça. Regue quando estiver leve, não pelo calendário — a tabela é referência, não ordem. Encharcar todo dia em ' + r.sub.name + ' sufoca a raiz e imita deficiência de nitrogênio.';
+    : 'Levante o vaso: peso é o melhor medidor de umidade que existe e é de graça. Regue quando estiver leve, não pelo calendário — a tabela é referência, não ordem. Encharcar todo dia em ' + r.sub.name + ' sufoca a raiz e imita deficiência de nitrogênio. '
+      + 'Se estes volumes parecem altos perto do que se lê em fórum, é porque eles saem da <b>transpiração calculada</b> a partir da sua luz e do seu dossel: mais luz, mais água. Os "1 a 1,5 L a cada 2 ou 3 dias" que circulam por aí correspondem a vaso de 11 L sob luz moderada — em vaso de ' + fmt(rg.potL) + ' L a rega é maior e mais espaçada, e o total do ciclo dá no mesmo.';
 
   $('ph-hint').innerHTML = 'pH alvo em ' + r.sub.name + ': <b>' + r.sub.ph + '</b>. '
     + (s.sub === 'soil' || s.sub === 'living'
