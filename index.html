@@ -236,6 +236,7 @@ tr:last-child td{border-bottom:0}
 td.stage{color:var(--dim);font-family:var(--sans)}
 td.wk{color:var(--gold)}
 td.pct{color:var(--dim)}
+td.src{color:var(--gold);font-family:var(--sans);white-space:normal}
 tr.flush td{color:var(--info)}
 
 /* ── mobile sticky total ──────────────── */
@@ -519,10 +520,10 @@ footer b{color:var(--dim)}
         <div class="f full">
           <label for="skill">Experiência do cultivador</label>
           <select id="skill">
-            <option value="0.10">Primeiros cultivos — ainda aprendendo</option>
-            <option value="0.15" selected>Intermediário — alguns cultivos bem-sucedidos</option>
-            <option value="0.185">Experiente — processo ajustado e consistente</option>
-            <option value="0.215">Especialista / comercial — cada variável otimizada</option>
+            <option value="0.62">Primeiros cultivos — ainda aprendendo</option>
+            <option value="1.00" selected>Intermediário — equivale às condições do estudo de Guelph</option>
+            <option value="1.35">Experiente — processo ajustado e consistente</option>
+            <option value="1.70">Especialista / comercial — cada variável otimizada</option>
           </select>
         </div>
         <div class="f"><label for="temp">Temperatura da sala <span class="u" data-tmp>°C</span></label><input type="number" id="temp" step="1" value="26"></div>
@@ -606,6 +607,33 @@ footer b{color:var(--dim)}
         <div class="row"><span class="k">Total de sais nutrientes</span><span class="v" id="o-salt">—</span></div>
         <div class="row"><span class="k">Duração do ciclo <small>germinação → colheita</small></span><span class="v" id="o-days">—</span></div>
         <div class="row"><span class="k">Energia <small>só as luzes, por ciclo</small></span><span class="v" id="o-kwh">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Fontes e método</h2>
+    <div class="body">
+      <p class="hint" style="font-size:12px">Cada número aqui vem de uma fonte declarada. Onde a literatura e o folclore de cultivo divergem, o app segue a literatura — e avisa.</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Informação</th><th>Fonte principal</th></tr></thead>
+          <tbody>
+            <tr><td class="stage">PPFD / DLI</td><td class="src">Utah State / Bugbee + estudos peer-reviewed</td></tr>
+            <tr><td class="stage">PPFD × produtividade</td><td class="src">University of Guelph + USU</td></tr>
+            <tr><td class="stage">Espectro LED</td><td class="src">USU / Bugbee</td></tr>
+            <tr><td class="stage">CO₂ × luz</td><td class="src">literatura científica CEA / cannabis</td></tr>
+            <tr><td class="stage">Coco / lã de rocha / turfa</td><td class="src">estudos peer-reviewed de substratos</td></tr>
+            <tr><td class="stage">Fertirrigação / EC</td><td class="src">estudos acadêmicos de cannabis + horticultura</td></tr>
+            <tr><td class="stage">VPD</td><td class="src">fisiologia vegetal / CEA</td></tr>
+            <tr><td class="stage">Dados comerciais</td><td class="src">Fluence, Apogee e fabricantes — fonte secundária</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="notes" style="margin-top:13px">
+        <div class="note info"><span class="ico">📄</span><span><b>A base do cálculo.</b> Rodriguez-Morrison, Llewellyn &amp; Zheng (2021), <i>Cannabis Yield, Potency, and Leaf Photosynthesis Respond Differently to Increasing Light Levels in an Indoor Environment</i>, Frontiers in Plant Science. Cannabis em 12 h e CO₂ ambiente de 437 ppm, 81 dias de floração: a produção subiu de <b>116 para 519 g/m²</b> conforme o PPFD foi de <b>120 para 1.800</b> — resposta linear, <b>sem saturação e sem branqueamento</b>. O ajuste usado aqui é g/m² = 87,2 + 5,553 × DLI.</span></div>
+        <div class="note warn"><span class="ico">⚖️</span><span><b>Por que isso rende menos que o papo de fórum.</b> A referência popular de 1 g/W vem de relatos de cultivadores, que misturam peso úmido, melhor caso e memória otimista. O estudo mediu peso seco em condições controladas, com uma genética rica em CBD. Este app ancora o nível "intermediário" no que foi <b>medido</b> e sobe a partir dali conforme o manejo — por isso o número costuma sair abaixo do que se lê em fórum.</span></div>
+        <div class="note info"><span class="ico">🍃</span><span><b>Folha satura, dossel não.</b> A fotossíntese de uma folha isolada satura bem abaixo de 1.800 PPFD, e é daí que vem o mito do teto em CO₂ ambiente. O dossel inteiro não satura porque a luz atravessa e alimenta as camadas de baixo. Por isso o modelo escala pelo dossel.</span></div>
       </div>
     </div>
   </div>
@@ -765,9 +793,28 @@ var CO2 = [{mult:1.00, sat:900, name:'CO₂ ambiente'},
            {mult:1.20, sat:1250, name:'CO₂ a 800–1000 ppm'},
            {mult:1.26, sat:1450, name:'CO₂ a 1200–1500 ppm'}];
 var ENV = {precise:{mult:1.10,name:'controle de clima preciso'}, decent:{mult:1.00,name:'controle de clima razoável'}, minimal:{mult:0.85,name:'controle de clima mínimo'}};
-var SKILL_SPREAD = {0.10:0.30, 0.15:0.23, 0.185:0.18, 0.215:0.15};
+/* ── BASE DE PRODUTIVIDADE ──────────────────────────────────────────────
+   Rodriguez-Morrison, Llewellyn & Zheng (2021), University of Guelph —
+   "Cannabis Yield, Potency, and Leaf Photosynthesis Respond Differently to
+   Increasing Light Levels in an Indoor Environment", Front. Plant Sci.
+
+   Cannabis em floração sob 12 h, CO2 AMBIENTE (437 ppm), 81 dias:
+     120 PPFD  (DLI  5,18) → 116 g/m²
+     1800 PPFD (DLI 77,76) → 519 g/m²
+   Resposta LINEAR em toda a faixa, sem saturação e sem branqueamento.
+
+   Ajuste linear em DLI (generaliza o fotoperíodo melhor que PPFD):
+     g/m² = 87,2 + 5,553 × DLI, para 81 dias de floração.
+
+   Nota: a fotossíntese FOLIAR satura bem abaixo de 1800 — quem não satura é
+   o dossel inteiro, porque a luz penetra nas camadas de baixo. Por isso o
+   modelo escala pelo dossel, não pela folha. */
+var GUELPH_A = 87.2, GUELPH_B = 5.553, GUELPH_DIAS = 81;
+
+/* Multiplicadores de manejo, relativos às condições do estudo (= 1,00).
+   O estudo é o ancoradouro: "intermediário" reproduz o que foi medido. */
+var SKILL_SPREAD = {0.62:0.30, 1.00:0.23, 1.35:0.18, 1.70:0.15};
 var STACK_DAMP = 0.75;
-var GMOL_MAX = 0.26;
 
 var toM  = function(v){ return imperial ? v*FT_M : v; };
 var toCm = function(v){ return imperial ? v*IN_CM : v; };
@@ -816,16 +863,15 @@ function calc(s){
   r.ppfd   = r.canopyM2 > 0 ? (r.ppf * s.hang) / r.canopyM2 : 0;
 
   var co2 = CO2[s.co2];
-  // Acima do ponto de saturação os fótons extras rendem muito pouco.
-  r.ppfdEff = r.ppfd <= co2.sat ? r.ppfd : co2.sat + (r.ppfd - co2.sat) * 0.35;
-
   var flowerHours = s.isAuto ? Math.max(s.ph, 18) : s.ph;
-  r.dli     = r.ppfd    * flowerHours * 0.0036;
-  r.dliEff  = r.ppfdEff * flowerHours * 0.0036;
+  r.dli     = r.ppfd * flowerHours * 0.0036;
   r.dliVeg  = r.ppfd * 18 * 0.0036;
   r.flowerDays = s.fwk * 7;
-  r.molesPerM2 = r.dliEff * r.flowerDays;
+  r.molesPerM2 = r.dli * r.flowerDays;
   r.totalMoles = r.molesPerM2 * r.canopyM2;
+
+  // Base Guelph, reescalada para a duração de floração informada.
+  r.baseM2 = (GUELPH_A + GUELPH_B * r.dli) * (r.flowerDays / GUELPH_DIAS);
 
   var sub = SUBS[s.sub], tr = TRAIN[s.train], ty = TYPES[s.type] || TYPES.hybrid;
   var mult = 1;
@@ -837,18 +883,20 @@ function calc(s){
   push(tr.mult, tr.label);
   push(ty.vigor, ty.nome);
   push(ENV[s.env].mult, ENV[s.env].name);
-  // CO₂ só compensa quando o dossel já recebe luz suficiente.
+  // CO₂ só compensa quando o dossel já recebe luz suficiente para usá-lo.
   r.co2Wasted = s.co2 > 0 && r.ppfd < 800;
   push(r.co2Wasted ? 1 + (co2.mult - 1) * 0.25 : co2.mult, co2.name);
 
   // Penalidades acumulam integralmente; bônus empilhados têm retorno decrescente.
   r.multRaw = mult;
   r.mult = mult > 1 ? 1 + (mult - 1) * STACK_DAMP : mult;
-  r.gmol = clamp(s.skill * r.mult, 0.04, GMOL_MAX);
-  r.capped = s.skill * r.mult > GMOL_MAX;
+  r.skillMult = s.skill;
   r.parts = parts;
 
-  r.yield = r.totalMoles * r.gmol;
+  r.gm2base = r.baseM2 * s.skill * r.mult;
+  r.yield = r.gm2base * r.canopyM2;
+  // g/mol vira RESULTADO derivado, não mais uma entrada do modelo.
+  r.gmol = r.totalMoles > 0 ? r.yield / r.totalMoles : 0;
   var spread = SKILL_SPREAD[s.skill] || 0.2;
   r.lo = r.yield * (1 - spread);
   r.hi = r.yield * (1 + spread);
@@ -1023,8 +1071,8 @@ function render(){
   var p = r.ppfd;
   if (p < 400) notes.push({t:'bad',i:'💡',h:'A luz é o seu teto',b:'Com ' + n(p) + ' de PPFD você está em nível de vega. A floração pede de 700 a 1000. Nessa intensidade a produção fica travada, não importa o que você nutra. Seriam necessários cerca de <b>' + fmt(r.totalW*(800/Math.max(p,1))) + ' W</b> da mesma luminária para chegar a 800.'});
   else if (p < 700) notes.push({t:'warn',i:'💡',h:'Luz insuficiente para floração',b:n(p) + ' de PPFD está abaixo da faixa de 700 a 1000. Adicionar luz é a mudança de maior impacto disponível — cerca de <b>' + fmt(r.totalW*(850/p) - r.totalW) + ' W</b> a mais te colocariam em 850.'});
-  else if (p > 1300 && s.co2 === 0) notes.push({t:'bad',i:'🔥',h:'Risco de branqueamento',b:n(p) + ' de PPFD sem CO₂ vai esbranquiçar o topo das colas e travar o crescimento. Suba a luminária ou reduza para cerca de 950. Fótons acima de ~900 são em boa parte desperdiçados com CO₂ ambiente — você paga por luz que a planta não consegue usar.'});
-  else if (p > 1000 && s.co2 === 0) notes.push({t:'warn',i:'☁️',h:'Você passou do teto do CO₂ ambiente',b:'Com ' + n(p) + ' de PPFD a planta fica sem CO₂ antes de ficar sem luz. Suplementar até 1000 ppm liberaria cerca de <b>+' + fmt(r.yield*0.20) + ' g</b> aqui; sem isso, baixar para ~950 quase não te custa nada.'});
+  else if (p > 1800) notes.push({t:'warn',i:'🔥',h:'Você passou da faixa que a pesquisa cobre',b:'Guelph testou até <b>1.800 PPFD</b> e a produção ainda subia linearmente lá em cima, sem branqueamento. Acima disso ninguém mediu direito — o modelo extrapola. Nessa altura o gargalo deixa de ser luz e vira temperatura de folha, VPD e nutrição, que num quarto real falham antes da planta.'});
+  else if (p > 1000 && s.co2 === 0) notes.push({t:'ok',i:'💡',h:'Luz alta, e isso não é desperdício',b:'Com ' + n(p) + ' de PPFD em CO₂ ambiente, a produção continua subindo — Guelph mediu ganho linear até 1.800 sem saturar e sem branquear. O que satura é a fotossíntese da <b>folha</b> isolada, não o dossel. Suplementar CO₂ ainda ajuda, mas não é obrigatório para aproveitar essa luz. O que precisa acompanhar é VPD e nutrição.'});
   else notes.push({t:'ok',i:'💡',h:'A intensidade de luz está na faixa certa',b:n(p) + ' de PPFD e um DLI de floração de ' + n(r.dli,1) + ' ficam na zona produtiva para ' + (s.co2 ? r.co2ref.name : 'CO₂ ambiente') + '.'});
 
   if (r.co2Wasted) notes.push({t:'warn',i:'☁️',h:'O CO₂ está sendo desperdiçado',b:'CO₂ só compensa acima de aproximadamente 800 de PPFD e você está em ' + n(p) + '. Resolva a luz primeiro — o modelo já reduziu o benefício do CO₂ a um quarto do valor normal.'});
@@ -1052,11 +1100,10 @@ function render(){
 
   if (s.isAuto && s.vday > 0) notes.push({t:'info',i:'⏱️',h:'Dias de vega não valem para automáticas',b:'Automáticas seguem o próprio relógio, então o campo de vega é ignorado. Mantenha de 18 a 20 h de luz do início ao fim e nunca transplante tarde — automáticas punem mexida na raiz com peso perdido de forma permanente.'});
 
-  if (r.capped) notes.push({t:'info',i:'🧢',h:'Você atingiu o teto do modelo',b:'Suas escolhas somam mais de <b>' + fmt(GMOL_MAX,2) + ' g/mol</b>, que é o melhor resultado documentado em salas seladas comerciais (perto de 2 g/W). A estimativa foi limitada nesse ponto. Daqui para frente, upgrades compram mais qualidade e consistência do que peso bruto.'});
-
-  notes.push({t:'info',i:'📊',h:'Como isso se compara',b:'<b>' + fmt(r.gw,2) + ' g/W</b> — a referência popular é 1,0 g/W, salas bem ajustadas chegam a 1,5 e o teto comercial fica perto de 2,0. Seus <b>' + fmt(r.gmol,3) + ' g/mol</b> partem de ' + fmt(s.skill,3) + ' pelo seu nível de experiência'
-    + (r.parts.length ? ', ajustados por ' + r.parts.map(function(x){ return x.why + ' (' + (x.m>1?'+':'') + fmt((x.m-1)*100) + '%)'; }).join(', ') : '')
-    + (r.multRaw > 1 ? ', e então amortecidos porque bônus empilhados nunca se realizam todos ao mesmo tempo.' : '.')});
+  notes.push({t:'info',i:'📊',h:'De onde sai esse número',b:'A base é o estudo de Guelph: <b>' + fmt(r.baseM2) + ' g/m²</b> para um DLI de ' + fmt(r.dli,1) + ' em ' + fmt(r.flowerDays) + ' dias de floração. Sobre ela entram o seu nível de manejo (×' + fmt(r.skillMult,2) + ')'
+    + (r.parts.length ? ' e ' + r.parts.map(function(x){ return x.why + ' (' + (x.m>1?'+':'') + fmt((x.m-1)*100) + '%)'; }).join(', ') : '')
+    + (r.multRaw > 1 ? ', com os bônus amortecidos porque nunca se realizam todos ao mesmo tempo' : '')
+    + '. Resultado: <b>' + fmt(r.gm2base) + ' g/m²</b>, ou <b>' + fmt(r.gw,2) + ' g/W</b> e <b>' + fmt(r.gmol,3) + ' g/mol</b> — os dois últimos são consequência do cálculo, não entradas dele.'});
 
   $('o-notes').innerHTML = notes.map(function(x){
     return '<div class="note ' + x.t + '"><span class="ico">' + x.i + '</span><span><b>' + x.h + '.</b> ' + x.b + '</span></div>';
