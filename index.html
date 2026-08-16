@@ -289,18 +289,25 @@ footer b{color:var(--dim)}
         <div class="f full">
           <label for="fix">Tipo de luminária <span class="u">→ eficácia</span></label>
           <select id="fix">
-            <option value="3.0">LED barra premium (Fluence / Gavita / HLG) — 3,0 µmol/J</option>
-            <option value="2.7" selected>Quantum board / LED barra moderno — 2,7 µmol/J</option>
-            <option value="2.3">LED intermediário (Spider Farmer / Mars Hydro) — 2,3 µmol/J</option>
-            <option value="1.9">LED econômico / CMH-LEC — 1,9 µmol/J</option>
-            <option value="1.7">HPS dupla terminação (DE) — 1,7 µmol/J</option>
-            <option value="1.6">Blurple / LED antigo — 1,6 µmol/J</option>
-            <option value="1.4">HPS ou MH simples (SE) — 1,4 µmol/J</option>
-            <option value="1.1">Fluorescente T5 — 1,1 µmol/J</option>
-            <option value="custom">Eficácia personalizada…</option>
+            <optgroup label="Sei os dados da minha luminária">
+              <option value="ppf">Vou informar o PPF (µmol/s) da ficha técnica</option>
+              <option value="custom">Vou informar a eficácia (µmol/J)</option>
+            </optgroup>
+            <optgroup label="Estimar pela categoria">
+              <option value="3.0">LED barra premium (Fluence / Gavita / HLG) — 3,0 µmol/J</option>
+              <option value="2.7" selected>Quantum board / LED barra moderno — 2,7 µmol/J</option>
+              <option value="2.4">LED popular Samsung LM301 (VIVOSUN / Spider Farmer / Mars Hydro) — 2,4 µmol/J</option>
+              <option value="1.9">LED econômico / CMH-LEC — 1,9 µmol/J</option>
+              <option value="1.7">HPS dupla terminação (DE) — 1,7 µmol/J</option>
+              <option value="1.6">Blurple / LED antigo — 1,6 µmol/J</option>
+              <option value="1.4">HPS ou MH simples (SE) — 1,4 µmol/J</option>
+              <option value="1.1">Fluorescente T5 — 1,1 µmol/J</option>
+            </optgroup>
           </select>
         </div>
         <div class="f" id="eff-wrap" style="display:none"><label for="eff">Eficácia <span class="u">µmol/J</span></label><input type="number" id="eff" step="0.05" value="2.7"></div>
+        <div class="f" id="ppf-wrap" style="display:none"><label for="ppfin">PPF da luminária <span class="u">µmol/s</span></label><input type="number" id="ppfin" step="10" value="500"></div>
+        <p class="hint" id="eff-calc"></p>
         <div class="f"><label for="watt">Watts reais na tomada <span class="u">por luminária</span></label><input type="number" id="watt" step="5" value="480"></div>
         <div class="f"><label for="nfix">Número de luminárias</label><input type="number" id="nfix" step="1" min="1" value="1"></div>
         <p class="hint">Use o <b>consumo real na tomada</b>, não o número "equivalente" da caixa. Luminárias baratas costumam ser anunciadas com 2 a 4× o consumo verdadeiro — um painel "de 1000 W" quase sempre puxa de 100 a 150 W.</p>
@@ -389,28 +396,40 @@ footer b{color:var(--dim)}
               <option value="megacrop">MegaCrop</option>
               <option value="athenapro">Athena Pro Line (pó)</option>
             </optgroup>
-            <optgroup label="Linhas em frasco">
-              <option value="gh" selected>General Hydroponics — Flora Series (3 partes)</option>
-              <option value="ghmaxi">General Hydroponics — MaxiGro / MaxiBloom</option>
+            <optgroup label="Linhas nacionais">
+              <option value="masterplants">Master Plants</option>
               <option value="high">High Nutrients</option>
               <option value="easycoco">Easy Coco</option>
               <option value="bomba">Bomba Fruit</option>
+              <option value="forth">Forth / Terra Forte (jardinagem geral)</option>
+            </optgroup>
+            <optgroup label="Linhas importadas">
+              <option value="gh" selected>General Hydroponics — Flora Series (3 partes)</option>
+              <option value="ghmaxi">General Hydroponics — MaxiGro / MaxiBloom</option>
+              <option value="terraaq">Terra Aquatica (ex-GHE)</option>
               <option value="an">Advanced Nutrients</option>
               <option value="canna">Canna (Coco A+B / Terra)</option>
+              <option value="topcrop">Top Crop</option>
+              <option value="atami">Atami</option>
+              <option value="grotek">Grotek</option>
+              <option value="ghf">Green House Feeding</option>
               <option value="hesi">Hesi</option>
               <option value="mills">Mills</option>
               <option value="athenab">Athena Blended</option>
               <option value="plagron">Plagron</option>
-              <option value="outra">Outra linha em frasco</option>
             </optgroup>
             <optgroup label="Orgânicos">
               <option value="biobizz">Biobizz</option>
-              <option value="forth">Forth / Terra Forte (jardinagem geral)</option>
               <option value="seco">Orgânicos secos (farinhas, húmus, bokashi)</option>
               <option value="cha">Chás de composto / só água</option>
             </optgroup>
+            <optgroup label="Não está na lista">
+              <option value="custom">Outra marca — digitar o nome…</option>
+              <option value="outra">Não sei / genérica</option>
+            </optgroup>
           </select>
         </div>
+        <div class="f full" id="bname-wrap" style="display:none"><label for="bname">Nome da marca</label><input type="text" id="bname" placeholder="ex.: a linha que você usa"></div>
         <div class="f full">
           <label for="nute">Tipo de programa <span class="u">— define o cálculo; ajuste se a marca acima estiver classificada errado</span></label>
           <select id="nute">
@@ -626,7 +645,14 @@ var BRANDS = {
   athenapro:{t:'salt', ec:2.4, nota:'Pó de duas partes (Core + Bloom), formulado para EC alta e ambiente controlado. Confira a dureza da sua água antes de seguir a tabela cheia.'},
   gh:       {t:'full', ec:2.0, nota:'Três partes (Gro / Micro / Bloom). A ordem de mistura importa: tanque cheio de água, Micro primeiro, mexa, depois Gro, depois Bloom. Juntar concentrados direto um no outro precipita cálcio e o nutriente fica no fundo do balde. Em coco ou água de osmose quase sempre pede cal-mag à parte.'},
   ghmaxi:   {t:'base', ec:1.9, nota:'Pó de parte única, barato e direto. Dissolva por completo antes de medir a EC, senão você subdosa sem perceber.'},
+  masterplants:{t:'full', ec:2.0, nota:'Linha nacional. Não tenho os dados de formulação dela para detalhar aqui, então trate a tabela do fabricante como ponto de partida e confirme pela EC — é ela que manda, não o rótulo. Se a sua Master Plants for base + aditivos, o tipo acima já está certo; se for só uma base, troque para "Somente base".'},
   high:     {t:'full', ec:2.0, nota:'Linha nacional, fácil de achar em growshop e com tabela própria por fase. Como em quase toda linha em frasco, a tabela do fabricante costuma ser generosa — muita gente roda entre 70 e 80% do indicado e confere pela EC.'},
+  terraaq:  {t:'full', ec:2.0, nota:'Herdeira da antiga GHE, mesma lógica de três partes da Flora Series. A ordem de mistura vale igual: tanque cheio primeiro, um componente de cada vez, nunca concentrados juntos.'},
+  topcrop:  {t:'full', ec:2.0, nota:'Linha espanhola comum em growshop brasileiro, com versão mineral e versão orgânica. Confira qual você tem — a EC de trabalho muda bastante entre as duas.'},
+  atami:    {t:'full', ec:2.0, nota:'Tem linhas separadas por meio (Coco, Terra, Hydro). Use a que corresponde ao seu substrato: trocar entre elas desregula o cálcio.'},
+  grotek:   {t:'full', ec:2.0, nota:'Base simples com um catálogo grande de aditivos. Dá para rodar bem só com a base — os boosters são opcionais e caros por grama de resultado.'},
+  ghf:      {t:'full', ec:1.9, nota:'Linha em pó pensada para dose única por rega. Dissolva por completo antes de medir a EC, senão você subdosa sem perceber.'},
+  custom:   {t:'full', ec:2.0, nota:'Marca não catalogada aqui. O cálculo segue pelo <b>tipo de programa</b> logo abaixo — escolha o que mais se parece com o que você usa e ajuste a EC de pico. A EC é o que a planta enxerga; o rótulo é só o caminho até ela.'},
   easycoco: {t:'full', ec:1.9, coco:true, nota:'Linha nacional pensada para fibra de coco. Confirme no rótulo se ela já traz cálcio e magnésio: se trouxer, não empilhe cal-mag por cima — coco com excesso de cálcio trava a absorção de potássio.'},
   bomba:    {t:'full', ec:2.0, nota:'Tratado aqui como booster de floração usado junto de uma base, e não como linha base completa. Se no seu caso ele faz o papel de base, troque o tipo de programa acima — o cálculo segue o tipo, não a marca.'},
   an:       {t:'full', ec:2.0, nota:'Linha cara e cheia de aditivos. O pH Perfect não dispensa medir: confira o pH mesmo assim, principalmente em coco.'},
@@ -664,7 +690,10 @@ function read(){
   var s = {
     W: toM(+$('w').value), D: toM(+$('d').value), H: toM(+$('h').value),
     cov: +$('cov').value/100,
-    eff: fixSel === 'custom' ? +$('eff').value : +fixSel,
+    eff: fixSel === 'custom' ? +$('eff').value
+       : fixSel === 'ppf'    ? (+$('watt').value > 0 ? +$('ppfin').value / +$('watt').value : 0)
+       : +fixSel,
+    fixMode: fixSel,
     watt: +$('watt').value, nfix: Math.max(1, +$('nfix').value),
     hang: +$('hang').value, ph: +$('ph').value,
     type: type, fwk: +$('fwk').value, str: +$('str').value, vday: +$('vday').value,
@@ -738,12 +767,15 @@ function calc(s){
   r.areaNeed = r.areaPer * s.np;
   r.floorPct = r.floorM2 > 0 ? r.areaNeed / r.floorM2 : 0;
 
-  var potD = POTS[s.pot][0] / 100;
+  // Fallback defensivo: um valor de vaso fora da tabela não pode derrubar a tela toda.
+  var potSpec = POTS[s.pot] || POTS[5];
+  r.potCm     = potSpec[0];
+  var potD    = potSpec[0] / 100;
   r.potsAcross = Math.floor(s.W / potD);
   r.potsDeep   = Math.floor(s.D / potD);
   r.potsMax    = Math.max(0, r.potsAcross * r.potsDeep);
 
-  r.potH      = POTS[s.pot][1] / 100 + 0.05;
+  r.potH      = potSpec[1] / 100 + 0.05;
   r.plantH    = (s.flip / 100) * s.str;
   r.clearance = r.ppfd > 900 ? 0.40 : 0.30;
   r.fixtureH  = 0.12;
@@ -853,7 +885,7 @@ function render(){
   fit.push({
     t: potsOK ? 'ok' : 'bad', i: potsOK ? '✓' : '✕',
     h: potsOK ? 'Os vasos cabem no piso' : 'Os vasos não cabem fisicamente',
-    b: 'Um vaso de ' + POT_L[s.pot] + ' L tem ' + n(POTS[s.pot][0]) + ' cm de diâmetro. Seu piso comporta uma grade de '
+    b: 'Um vaso de ' + (POT_L[s.pot] || '—') + ' L tem ' + n(r.potCm) + ' cm de diâmetro. Seu piso comporta uma grade de '
       + n(r.potsAcross) + ' × ' + n(r.potsDeep) + ' = <b>' + fmt(r.potsMax) + ' vasos</b>; você planejou <b>' + fmt(s.np) + '</b>.'
   });
 
@@ -943,7 +975,16 @@ function render(){
   $('o-wpp').textContent   = fmt(r.perPlant*1000) + ' mL/planta/dia';
   $('o-wtot').textContent  = fmt(r.totalL) + ' L';
   $('o-salt').textContent  = (r.saltG > 1000 ? fmt(r.saltG/1000,1) + ' kg' : fmt(r.saltG) + ' g') + (s.ecw > 0 ? ' (já sem a água)' : '');
-  $('brand-note').innerHTML = '<b>' + $('brand').options[$('brand').selectedIndex].text.split(' — ')[0] + ':</b> ' + r.brand.nota;
+  var bLabel = s.brand === 'custom'
+    ? (($('bname').value || '').trim() || 'Marca personalizada')
+    : $('brand').options[$('brand').selectedIndex].text.split(' — ')[0];
+  $('brand-note').innerHTML = '<b>' + bLabel + ':</b> ' + r.brand.nota;
+
+  $('eff-calc').innerHTML = s.fixMode === 'ppf'
+    ? 'Isso dá <b>' + fmt(s.eff,2) + ' µmol/J</b> de eficácia (PPF ÷ watts). Confira se o PPF da ficha é da luminária inteira e se os watts são o consumo real na tomada.'
+    : s.fixMode === 'custom'
+    ? 'Se você tem o PPF na ficha técnica, prefira informá-lo: eficácia = PPF ÷ watts reais, e o número sai exato em vez de estimado.'
+    : 'Categoria estimada. Se a ficha da sua luminária traz o <b>PPF em µmol/s</b>, troque para a primeira opção e informe o valor — o cálculo passa a usar o dado da sua luminária, não uma média.';
   $('o-days').textContent  = fmt(r.cycleDays) + ' dias (' + fmt(r.cycleDays/7,1) + ' sem)';
   $('o-kwh').textContent   = fmt(r.kwh) + ' kWh';
 
@@ -1008,7 +1049,9 @@ function setUnits(imp){
 }
 
 function setBrand(){
-  var b = BRANDS[$('brand').value];
+  var v = $('brand').value;
+  $('bname-wrap').style.display = v === 'custom' ? '' : 'none';
+  var b = BRANDS[v];
   if (!b) return;
   $('nute').value = b.t;
   $('ec').value = b.ec;
@@ -1019,7 +1062,9 @@ $('tent').addEventListener('change', function(){ setTent(); render(); });
 $('type').addEventListener('change', function(){ setType(); render(); });
 $('train').addEventListener('change', function(){ setTrain(); render(); });
 $('fix').addEventListener('change', function(){
-  $('eff-wrap').style.display = $('fix').value === 'custom' ? '' : 'none';
+  var v = $('fix').value;
+  $('eff-wrap').style.display = v === 'custom' ? '' : 'none';
+  $('ppf-wrap').style.display = v === 'ppf' ? '' : 'none';
   render();
 });
 ['w','d','h'].forEach(function(id){
