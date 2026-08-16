@@ -355,6 +355,25 @@ footer b{color:var(--dim)}
               <option value="yx720">YXO Quantum Bar 720 W</option>
               <option value="yx1000">YXO Quantum Bar 1000 W</option>
             </optgroup>
+            <optgroup label="Master Plants PRO-MID — Samsung LM283B+">
+              <option value="mpm65">PRO-MID Quantum Board 65 W</option>
+              <option value="mpm120">PRO-MID Quantum Board 120 W</option>
+              <option value="mpm240">PRO-MID Quantum Barra 240 W</option>
+              <option value="mpm480">PRO-MID Quantum Barra 480 W</option>
+              <option value="mpm635">PRO-MID Quantum Barra 635 W</option>
+            </optgroup>
+            <optgroup label="Master Plants PRO — Samsung LM301H EVO">
+              <option value="mpp120">PRO Quantum Barra 120 W</option>
+              <option value="mpp240">PRO Quantum Barra 240 W</option>
+            </optgroup>
+            <optgroup label="Master Plants PRO-MASTER — chip não identificado">
+              <option value="mpx35">PRO-MASTER Quantum Board 35 W</option>
+              <option value="mpx65">PRO-MASTER Quantum Board 65 W</option>
+              <option value="mpx120">PRO-MASTER Quantum Board 120 W</option>
+              <option value="mpx240">PRO-MASTER Quantum Barra 240 W</option>
+              <option value="mpx480">PRO-MASTER Quantum Barra 480 W</option>
+              <option value="mpx650">PRO-MASTER Quantum Barra 650 W</option>
+            </optgroup>
             <optgroup label="DNA420 — linha nacional">
               <option value="dna35">DNA420 Quantum Board 35 W</option>
               <option value="dna40">DNA420 Quantum Board 40 W</option>
@@ -851,6 +870,36 @@ var DNA420 = {
   dna240:{w:240, nome:'Under Canopy 240 W',  cob:null}
 };
 
+/* Master Plants tem TRÊS linhas de LED, com procedência de dado bem diferente:
+
+   PRO-MID (Samsung LM283B+) — a única com número publicado e verificável: o
+     65 W declara PPF de 176 µmol/s a 65 W, que dá 2,71 µmol/J. As duas contas
+     fecham, então aqui a eficácia não é estimada.
+   PRO (Samsung LM301H EVO + Deep Red 660 e Deep Blue 450, driver MeanWell) —
+     sem PPF publicado; usa o mesmo 2,80 de luminária que aplico ao EVO.
+   PRO-MASTER (chip "exclusivo" não identificado) — o fabricante não informa
+     marca de chip, PPF nem µmol/J, e afirma desempenho "igual ou superior" ao
+     LM301H EVO. Alegação não verificável: aqui vai 2,50, entre o LM283B e o
+     EVO, e a tela diz que o dado não foi publicado. */
+var MPLED = {
+  // PRO-MID — LM283B+
+  mpm65:  {w:65,  linha:'PRO-MID', eff:176/65, nome:'Quantum Board 65 W',  cob:'0,80 × 0,80 m em vega, 0,60 × 0,60 m em floração', ppf:176},
+  mpm120: {w:120, linha:'PRO-MID', eff:2.70, nome:'Quantum Board 120 W', cob:null},
+  mpm240: {w:240, linha:'PRO-MID', eff:2.70, nome:'Quantum Barra 240 W', cob:null},
+  mpm480: {w:480, linha:'PRO-MID', eff:2.70, nome:'Quantum Barra 480 W', cob:null},
+  mpm635: {w:635, linha:'PRO-MID', eff:2.70, nome:'Quantum Barra 635 W', cob:null},
+  // PRO — LM301H EVO
+  mpp120: {w:120, linha:'PRO', eff:2.80, nome:'Quantum Barra 120 W', cob:null, evo:true},
+  mpp240: {w:240, linha:'PRO', eff:2.80, nome:'Quantum Barra 240 W', cob:null, evo:true},
+  // PRO-MASTER — chip não identificado
+  mpx35:  {w:35,  linha:'PRO-MASTER', eff:2.50, nome:'Quantum Board 35 W',  cob:null, opaco:true},
+  mpx65:  {w:65,  linha:'PRO-MASTER', eff:2.50, nome:'Quantum Board 65 W',  cob:null, opaco:true},
+  mpx120: {w:120, linha:'PRO-MASTER', eff:2.50, nome:'Quantum Board 120 W', cob:null, opaco:true},
+  mpx240: {w:240, linha:'PRO-MASTER', eff:2.50, nome:'Quantum Barra 240 W', cob:null, opaco:true},
+  mpx480: {w:480, linha:'PRO-MASTER', eff:2.50, nome:'Quantum Barra 480 W', cob:null, opaco:true},
+  mpx650: {w:650, linha:'PRO-MASTER', eff:2.50, nome:'Quantum Barra 650 W', cob:null, opaco:true}
+};
+
 (function(){                       // marcas entram no mesmo mapa das demais
   var k, m;
   for (k in LEDSIND) {
@@ -868,6 +917,16 @@ var DNA420 = {
     FIXTURES[k] = {eff:DIODOS.d_lm283.eff, w:m.w, nome:'DNA420 ' + m.nome,
                    cob:m.cob, diodo:'Samsung LM283B com Deep Red, UV e IR', derivada:true,
                    ressalva:'O fabricante anuncia <b>até 2,6 µmol/J</b>, mas "até" é teto de melhor caso, não valor de operação — o cálculo usa <b>2,40</b>, realista para LM283B na luminária. Se a sua ficha trouxer o PPF medido, prefira informá-lo.'};
+  }
+  for (k in MPLED) {
+    m = MPLED[k];
+    var txt;
+    if (m.ppf)      txt = 'Eficácia de <b>' + (m.ppf/m.w).toFixed(2).replace('.',',') + ' µmol/J</b> publicada pelo fabricante, não estimada: eles declaram <b>PPF de ' + m.ppf + ' µmol/s</b> a ' + m.w + ' W, e as duas contas fecham. Chip Samsung LM283B+.';
+    else if (m.opaco) txt = '<b>Atenção à procedência do número.</b> A PRO-MASTER não informa marca de chip, PPF nem µmol/J — só diz que o chip é "exclusivo" e que rende igual ou mais que o Samsung LM301H EVO. Sem dado publicado, não dá para confirmar. O cálculo usa <b>2,50 µmol/J</b>, entre o LM283B e o EVO. Se você tiver a ficha, informe o PPF; melhor ainda, meça o dossel com luxímetro.';
+    else if (m.evo) txt = 'Chip <b>Samsung LM301H EVO</b> com Deep Red 660nm, Deep Blue 450nm e driver MeanWell. Sem PPF publicado, então vale o <b>2,80 µmol/J</b> de luminária que uso para o EVO — o 3,14 que se vê por aí é do diodo isolado, antes das perdas.';
+    else            txt = 'Chip <b>Samsung LM283B+</b>, mesma linha do 65 W, cuja eficácia publicada de 2,70 µmol/J confere com o PPF declarado. Sem ficha própria deste modelo, vale o mesmo 2,70.';
+    FIXTURES[k] = {eff:m.eff, w:m.w, nome:'Master Plants ' + m.linha + ' ' + m.nome,
+                   cob:m.cob, publicada:true, ressalva:txt};
   }
   for (var d in DIODOS) FIXTURES[d] = {eff:DIODOS[d].eff, w:0, nome:DIODOS[d].nome, cob:null, porDiodo:true};
 })();
@@ -1471,6 +1530,10 @@ function render(){
           ? fixSpec.ressalva
           : 'A eficácia de <b>' + fmt(fixSpec.eff,2) + ' µmol/J é derivada do diodo</b>, porque o fabricante não publica PPF nem µmol/J. Se a sua ficha trouxer o PPF, prefira informá-lo.')
       + ' Confira também o consumo real na tomada.'
+    : fixSpec && fixSpec.publicada
+    ? '<b>' + fixSpec.nome + '</b>, ' + fmt(fixSpec.w) + ' W. ' + fixSpec.ressalva
+      + (fixSpec.cob ? ' Cobertura indicada: <b>' + fixSpec.cob + '</b>.' : '')
+      + ' Ainda assim confira o consumo real na tomada.'
     : fixSpec
     ? 'VIVOSUN ' + fixSpec.nome + ': <b>' + fmt(fixSpec.eff,2) + ' µmol/J</b> publicados pelo fabricante'
       + (fixSpec.cob ? ', cobertura indicada de <b>' + fixSpec.cob + '</b> em floração' : '')
