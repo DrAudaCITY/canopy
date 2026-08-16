@@ -347,6 +347,7 @@ footer b{color:var(--dim)}
               <option value="custom">Vou informar a eficácia (µmol/J)</option>
             </optgroup>
             <optgroup label="YXO — linha nacional">
+              <option value="yx120">YXO Quantum Bar 120 W</option>
               <option value="yx240">YXO Quantum Bar 240 W</option>
               <option value="yx320">YXO Quantum Bar 320 W</option>
               <option value="yx480">YXO Quantum Bar 480 W</option>
@@ -817,7 +818,8 @@ var LEDSIND = {
    do diodo: os anúncios da fábrica trazem campos preenchidos errado — chegam a
    listar "1678 µmol/J", número impossível, já que o teto teórico é ~4,7. */
 var YXO = {
-  yx240: {w:240,  nome:'Quantum Bar 240 W', cob:'~1 m² em floração'},
+  yx120: {w:120,  nome:'Quantum Bar 120 W', cob:'~0,60 × 0,60 m em floração'},
+  yx240: {w:240,  nome:'Quantum Bar 240 W', cob:'0,80 × 0,80 m a 1,00 × 1,00 m em floração'},
   yx320: {w:320,  nome:'Quantum Bar 320 W', cob:null},
   yx480: {w:480,  nome:'Quantum Bar 480 W', cob:null},
   yx640: {w:640,  nome:'Quantum Bar 640 W', cob:null},
@@ -1310,7 +1312,8 @@ function render(){
   /* ── o que está te limitando ── */
   var notes = [];
   var p = r.ppfd;
-  if (p < 400) notes.push({t:'bad',i:'💡',h:'A luz é o seu teto',b:'Com ' + n(p) + ' de PPFD você está em nível de vega. A floração pede de 700 a 1000. Nessa intensidade a produção fica travada, não importa o que você nutra. Seriam necessários cerca de <b>' + fmt(r.totalW*(800/Math.max(p,1))) + ' W</b> da mesma luminária para chegar a 800.'});
+  if (p < 400) notes.push({t:'bad',i:'💡',h:'A luz é o seu teto — e o total acima não é confiável aqui',b:'Com ' + n(p) + ' de PPFD você está em nível de vega. A floração pede de 700 a 1000, e nessa intensidade a produção trava por mais que você nutra. Seriam cerca de <b>' + fmt(r.totalW*(800/Math.max(p,1))) + ' W</b> da mesma luminária para chegar a 800. '
+    + '<b>Atenção ao número principal:</b> abaixo dessa faixa o modelo perde validade e chega a mostrar mais produção em estufa maior com a mesma luminária, o que é impossível — os fótons são os mesmos. Aumentar o piso sem aumentar a luz não cria colheita, só espalha a mesma. Compare configurações pelo <b>PPFD</b>, não pelo total, enquanto estiver aqui embaixo.'});
   else if (p < 700) notes.push({t:'warn',i:'💡',h:'Luz insuficiente para floração',b:n(p) + ' de PPFD está abaixo da faixa de 700 a 1000. Adicionar luz é a mudança de maior impacto disponível — cerca de <b>' + fmt(r.totalW*(850/p) - r.totalW) + ' W</b> a mais te colocariam em 850.'});
   else if (p > 1800) notes.push({t:'warn',i:'🔥',h:'Você passou da faixa que a pesquisa cobre',b:'Guelph testou até <b>1.800 PPFD</b> e a produção ainda subia linearmente lá em cima, sem branqueamento. Acima disso ninguém mediu direito — o modelo extrapola. Nessa altura o gargalo deixa de ser luz e vira temperatura de folha, VPD e nutrição, que num quarto real falham antes da planta.'});
   else if (p > 1000 && s.co2 === 0) notes.push({t:'ok',i:'💡',h:'Luz alta, e isso não é desperdício',b:'Com ' + n(p) + ' de PPFD em CO₂ ambiente, a produção continua subindo — Guelph mediu ganho linear até 1.800 sem saturar e sem branquear. O que satura é a fotossíntese da <b>folha</b> isolada, não o dossel. Suplementar CO₂ ainda ajuda, mas não é obrigatório para aproveitar essa luz. O que precisa acompanhar é VPD e nutrição.'});
