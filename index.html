@@ -293,6 +293,12 @@ footer b{color:var(--dim)}
               <option value="ppf">Vou informar o PPF (µmol/s) da ficha técnica</option>
               <option value="custom">Vou informar a eficácia (µmol/J)</option>
             </optgroup>
+            <optgroup label="VIVOSUN — dados do fabricante">
+              <option value="aw200se">AeroLight Wing AW200SE — 200 W, 2,75 µmol/J</option>
+              <option value="vs1000">VS1000 — 100 W, 2,75 µmol/J</option>
+              <option value="vs4000">VS4000 — 400 W, 2,9 µmol/J</option>
+              <option value="vsgen">Outra da linha VS (Samsung LM301) — 2,75 µmol/J</option>
+            </optgroup>
             <optgroup label="Estimar pela categoria">
               <option value="3.0">LED barra premium (Fluence / Gavita / HLG) — 3,0 µmol/J</option>
               <option value="2.7" selected>Quantum board / LED barra moderno — 2,7 µmol/J</option>
@@ -601,6 +607,15 @@ var imperial = false;
 
 var FT_M = 0.3048, IN_CM = 2.54, GAL_L = 3.78541, L_PINT = 2.11338;
 
+/* Luminárias com número publicado pelo fabricante — não é estimativa de categoria.
+   w = consumo nominal, usado para preencher o campo de watts ao escolher o modelo. */
+var FIXTURES = {
+  aw200se:{eff:2.75, w:200, nome:'AeroLight Wing AW200SE', cob:'2 × 4 ft (0,60 × 1,20 m)'},
+  vs1000: {eff:2.75, w:100, nome:'VS1000',                 cob:'2 × 2 ft (0,60 × 0,60 m)'},
+  vs4000: {eff:2.90, w:400, nome:'VS4000',                 cob:'4 × 4 ft (1,20 × 1,20 m)'},
+  vsgen:  {eff:2.75, w:0,   nome:'linha VS',               cob:null}
+};
+
 var TENTS = {
   '2x2':[2,2,5.3], '2x4':[2,4,6.5], '3x3':[3,3,6.5], '4x4':[4,4,6.5],
   '4x8':[4,8,6.5], '5x5':[5,5,6.5], '8x8':[8,8,6.9]
@@ -690,8 +705,9 @@ function read(){
   var s = {
     W: toM(+$('w').value), D: toM(+$('d').value), H: toM(+$('h').value),
     cov: +$('cov').value/100,
-    eff: fixSel === 'custom' ? +$('eff').value
-       : fixSel === 'ppf'    ? (+$('watt').value > 0 ? +$('ppfin').value / +$('watt').value : 0)
+    eff: fixSel === 'custom'  ? +$('eff').value
+       : fixSel === 'ppf'     ? (+$('watt').value > 0 ? +$('ppfin').value / +$('watt').value : 0)
+       : FIXTURES[fixSel]     ? FIXTURES[fixSel].eff
        : +fixSel,
     fixMode: fixSel,
     watt: +$('watt').value, nfix: Math.max(1, +$('nfix').value),
@@ -980,7 +996,12 @@ function render(){
     : $('brand').options[$('brand').selectedIndex].text.split(' — ')[0];
   $('brand-note').innerHTML = '<b>' + bLabel + ':</b> ' + r.brand.nota;
 
-  $('eff-calc').innerHTML = s.fixMode === 'ppf'
+  var fixSpec = FIXTURES[s.fixMode];
+  $('eff-calc').innerHTML = fixSpec
+    ? 'VIVOSUN ' + fixSpec.nome + ': <b>' + fmt(fixSpec.eff,2) + ' µmol/J</b> publicados pelo fabricante'
+      + (fixSpec.cob ? ', cobertura indicada de <b>' + fixSpec.cob + '</b> em floração' : '')
+      + '. Se você dimeriza, ajuste os watts para o consumo real.'
+    : s.fixMode === 'ppf'
     ? 'Isso dá <b>' + fmt(s.eff,2) + ' µmol/J</b> de eficácia (PPF ÷ watts). Confira se o PPF da ficha é da luminária inteira e se os watts são o consumo real na tomada.'
     : s.fixMode === 'custom'
     ? 'Se você tem o PPF na ficha técnica, prefira informá-lo: eficácia = PPF ÷ watts reais, e o número sai exato em vez de estimado.'
@@ -1065,6 +1086,8 @@ $('fix').addEventListener('change', function(){
   var v = $('fix').value;
   $('eff-wrap').style.display = v === 'custom' ? '' : 'none';
   $('ppf-wrap').style.display = v === 'ppf' ? '' : 'none';
+  // Escolher um modelo conhecido já preenche o consumo nominal.
+  if (FIXTURES[v] && FIXTURES[v].w) $('watt').value = FIXTURES[v].w;
   render();
 });
 ['w','d','h'].forEach(function(id){
