@@ -232,6 +232,12 @@ input[type=range]{padding:0;height:26px;background:none;border:0;accent-color:va
 
 /* ── table ────────────────────────────── */
 .scroll{overflow-x:auto}
+/* o diário do ciclo inteiro passa de 100 linhas — rola dentro do próprio card */
+.diario{max-height:420px;overflow-y:auto}
+.diario thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+tr.seca td{color:var(--dimmer)}
+tr.marco td{border-top:1px solid var(--line)}
+td.vol{color:var(--gold)}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
 th{
   text-align:left;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
@@ -638,6 +644,20 @@ footer b{color:var(--dim)}
   </div>
 
   <div class="card">
+    <h2>Rega dia a dia</h2>
+    <div class="body">
+      <div class="notes"><div class="note info" id="rega-ritmo"></div></div>
+      <div class="scroll diario">
+        <table>
+          <thead><tr><th>Dia</th><th>Fase</th><th>Rega</th><th>Por planta</th><th>Total</th><th>EC</th></tr></thead>
+          <tbody id="o-rega"></tbody>
+        </table>
+      </div>
+      <p class="hint" id="rega-nota"></p>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Fontes e método</h2>
     <div class="body">
       <p class="hint" style="font-size:12px">Cada número aqui vem de uma fonte declarada. Onde a literatura e o folclore de cultivo divergem, o app segue a literatura — e avisa.</p>
@@ -1028,6 +1048,90 @@ function calc(s){
    null = floração, ou seja, tudo o que a luminária entrega. */
 var PPFD_MUDA = 200, PPFD_VEGA_INI = 300, PPFD_VEGA_FIM = 600;
 
+/* ── REGA DIA A DIA ────────────────────────────────────────────────────
+   Substratos inertes (coco, lã de rocha) são regados todo dia, várias vezes,
+   com escoamento — não têm tampão e a raiz não pode secar. Substratos com
+   reserva (terra, turfa, solo vivo) trabalham em ciclo seco-úmido: rega quando
+   o déficit acumulado consome parte da água disponível no vaso.
+   DWC não se rega: repõe-se o reservatório. */
+/* fracVaso  = volume por rega, como fração do vaso (inertes: pouco e sempre)
+   reserva   = depleção permitida antes da próxima rega, como fração do vaso.
+   Não é a água total do substrato: um vaso de 19 L de terra retém ~8 L na
+   capacidade de campo, e se rega depois de consumir ~1/3 disso — ou seja,
+   por volta de 15% do volume do vaso, não 34%. */
+var REGA = {
+  coco:    {tipo:'diaria',      evMax:4, fracVaso:0.045},
+  rockwool:{tipo:'diaria',      evMax:6, fracVaso:0.035},
+  peat:    {tipo:'ciclo',       reserva:0.12},
+  soil:    {tipo:'ciclo',       reserva:0.15},
+  living:  {tipo:'ciclo',       reserva:0.15},
+  dwc:     {tipo:'reservatorio'}
+};
+
+function faseDoDia(s, r, dia){
+  var mudaFim = 10;
+  var vegaFim = s.isAuto ? 24 : 10 + r.vegDays;
+  var florDias = Math.max(1, r.cycleDays - vegaFim);
+  if (dia <= mudaFim)  return {n:'Muda',  f:0.05 + 0.07*(dia/mudaFim), ecF:0.25};
+  if (dia <= vegaFim){
+    var t = (dia - mudaFim) / Math.max(1, vegaFim - mudaFim);
+    return {n:'Vega', f:0.18 + 0.42*t, ecF:0.42 + 0.30*t};
+  }
+  var tf = (dia - vegaFim) / florDias;
+  if (dia > r.cycleDays - 7)  return {n:'Lavagem',   f:1.05, ecF:0.09};
+  if (tf < 0.22)              return {n:'Stretch',   f:0.72 + 0.18*(tf/0.22), ecF:0.80};
+  if (tf < 0.75)              return {n:'Engorda',   f:1.00, ecF:0.95};
+  return {n:'Maturação', f:0.90, ecF:0.85};
+}
+
+function regaDiaria(s, r){
+  var cfg = REGA[s.sub] || REGA.coco;
+  var potL = POT_L[s.pot] || 19;
+  var netPico = r.dailyL / s.np;                 // L/planta/dia, transpiração pura
+  var total = Math.round(r.cycleDays);
+  var dias = [], deficit = 0, d;
+
+  for (d = 1; d <= total; d++){
+    var fase = faseDoDia(s, r, d);
+    var net  = netPico * fase.f;
+    var ec   = Math.max(0.2, s.ec * fase.ecF);
+    var linha = {dia:d, fase:fase.n, ec:ec, net:net, regar:false, eventos:0, porEvento:0, totalDia:0};
+
+    if (cfg.tipo === 'reservatorio'){
+      linha.regar = true; linha.eventos = 0;
+      linha.totalDia = net * s.np;               // reposição do reservatório
+      linha.troca = (d % 7 === 0);
+    } else if (cfg.tipo === 'diaria'){
+      linha.regar = true;
+      linha.eventos = clamp(Math.ceil(net / (potL * cfg.fracVaso)), 1, cfg.evMax);
+      var bruto = net * (1 + s.ro);
+      linha.porEvento = bruto / linha.eventos;
+      linha.totalDia = bruto * s.np;
+    } else {
+      // ciclo seco-úmido: acumula até consumir a reserva utilizável do vaso
+      deficit += net;
+      if (deficit >= potL * cfg.reserva || d === total){
+        linha.regar = true; linha.eventos = 1;
+        linha.porEvento = deficit * (1 + Math.min(s.ro, 0.15));
+        linha.totalDia = linha.porEvento * s.np;
+        deficit = 0;
+      }
+    }
+    dias.push(linha);
+  }
+
+  // ritmo resumido no pico. O dia de referência precisa ser um dia de rega,
+  // senão o ciclo seco-úmido cai num dia seco e mostra volume zero.
+  var pico = dias.filter(function(x){ return x.fase === 'Engorda'; });
+  var picoMolha = pico.filter(function(x){ return x.regar; });
+  var ref = picoMolha.length ? picoMolha[Math.floor(picoMolha.length/2)]
+          : (pico.length ? pico[pico.length-1] : dias[dias.length-1]);
+  var regasNoCiclo = dias.filter(function(x){ return x.regar && cfg.tipo !== 'reservatorio'; }).length;
+  // intervalo médio entre regas no pico, em dias
+  var intervalo = picoMolha.length ? Math.max(1, Math.round(pico.length / picoMolha.length)) : 1;
+  return {cfg:cfg, dias:dias, ref:ref, regas:regasNoCiclo, potL:potL, intervalo:intervalo};
+}
+
 function schedule(s, r){
   var rows = [], i;
   var ph = r.sub.ph;
@@ -1229,6 +1333,38 @@ function render(){
       + '<td>' + fmt(row[4]) + '</td>'
       + '<td class="pct">' + fmt(row[5]) + '%</td></tr>';
   }).join('');
+
+  /* ── rega dia a dia ── */
+  var rg = regaDiaria(s, r);
+  var vol = function(L){ return L < 1 ? fmt(L*1000) + ' mL' : fmt(L,2) + ' L'; };
+
+  $('o-rega').innerHTML = rg.dias.map(function(x, i){
+    var marco = i > 0 && rg.dias[i-1].fase !== x.fase;
+    var cls = (x.regar ? '' : 'seca') + (marco ? ' marco' : '');
+    var quando = rg.cfg.tipo === 'reservatorio'
+        ? (x.troca ? 'trocar' : 'repor')
+        : x.regar ? (x.eventos > 1 ? x.eventos + '×' : 'sim') : '—';
+    return '<tr' + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '>'
+      + '<td class="wk">' + x.dia + '</td>'
+      + '<td class="stage">' + x.fase + '</td>'
+      + '<td class="stage">' + quando + '</td>'
+      + '<td class="vol">' + (x.regar ? (rg.cfg.tipo === 'reservatorio' ? '—' : vol(x.porEvento)) : '—') + '</td>'
+      + '<td>' + (x.regar ? vol(x.totalDia) : '—') + '</td>'
+      + '<td>' + (x.regar ? fmt(x.ec,1) : '—') + '</td></tr>';
+  }).join('');
+
+  var ref = rg.ref;
+  $('rega-ritmo').innerHTML = rg.cfg.tipo === 'reservatorio'
+    ? '<span class="ico">🪣</span><span><b>DWC não se rega.</b> No pico o sistema evapora cerca de <b>' + vol(ref.totalDia) + ' por dia</b> — reponha com água em pH corrigido, sem nutriente, senão a EC sobe sozinha conforme a água some. Troque o reservatório inteiro a cada 7 dias e mantenha a solução entre 18 e 20 °C: acima disso o oxigênio dissolvido cai e vem podridão de raiz.</span>'
+    : rg.cfg.tipo === 'diaria'
+    ? '<span class="ico">💧</span><span><b>Ritmo em ' + r.sub.name + ': todo dia, sem exceção.</b> No pico da engorda são <b>' + ref.eventos + ' rega' + (ref.eventos>1?'s':'') + ' de ' + vol(ref.porEvento) + ' por planta</b>, somando ' + vol(ref.totalDia) + ' no dia para as ' + fmt(s.np) + ' plantas. Substrato inerte não tem reserva: se secar, a raiz para. São <b>' + fmt(rg.regas) + ' dias de rega</b> no ciclo.</span>'
+    : '<span class="ico">🌱</span><span><b>Ritmo em ' + r.sub.name + ': ciclo seco-úmido.</b> No pico da engorda dá rega a cada <b>' + fmt(rg.intervalo) + ' dia' + (rg.intervalo>1?'s':'') + '</b>, com <b>' + vol(ref.porEvento) + ' por planta</b> (' + vol(ref.totalDia) + ' no total). Na vega o intervalo é bem maior e aperta sozinho conforme a planta cresce — a tabela mostra dia a dia. São <b>' + fmt(rg.regas) + ' regas</b> no ciclo inteiro.</span>';
+
+  $('rega-nota').innerHTML = rg.cfg.tipo === 'reservatorio'
+    ? 'O volume acima é reposição por evaporação e transpiração. Meça a EC antes e depois de repor: se ela subiu, a planta bebeu mais água que sal e você pode diluir.'
+    : rg.cfg.tipo === 'diaria'
+    ? 'Volumes já incluem os ' + fmt(s.ro*100) + '% de escoamento. Regue até ver drenar pelo fundo e confira a EC do que sai: subiu muito acima da EC de entrada, tem sal acumulando e a próxima rega pede mais volume, não menos. Em vaso de ' + fmt(rg.potL) + ' L, mais de ' + rg.cfg.evMax + ' regas por dia só faz sentido com gotejamento automatizado.'
+    : 'Levante o vaso: peso é o melhor medidor de umidade que existe e é de graça. Regue quando estiver leve, não pelo calendário — a tabela é referência, não ordem. Encharcar todo dia em ' + r.sub.name + ' sufoca a raiz e imita deficiência de nitrogênio.';
 
   $('ph-hint').innerHTML = 'pH alvo em ' + r.sub.name + ': <b>' + r.sub.ph + '</b>. '
     + (s.sub === 'soil' || s.sub === 'living'
