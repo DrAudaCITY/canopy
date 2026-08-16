@@ -328,9 +328,27 @@ footer b{color:var(--dim)}
         <div class="f full">
           <label for="fix">Tipo de luminária <span class="u">→ eficácia</span></label>
           <select id="fix">
-            <optgroup label="Sei os dados da minha luminária">
+            <optgroup label="O jeito mais exato">
+              <option value="lux">Medi a luz no dossel com luxímetro</option>
               <option value="ppf">Vou informar o PPF (µmol/s) da ficha técnica</option>
               <option value="custom">Vou informar a eficácia (µmol/J)</option>
+            </optgroup>
+            <optgroup label="Placa sem ficha técnica — estimar pelo diodo">
+              <option value="d_lm301">Samsung LM301H / LM301B — 2,60 µmol/J</option>
+              <option value="d_lm281">Samsung LM281B / LM281B+ — 2,40 µmol/J</option>
+              <option value="d_302h">Ledestar 302H e similares — 2,30 µmol/J</option>
+              <option value="d_epi">Epileds / branco genérico — 1,80 µmol/J</option>
+              <option value="d_smd">Placa quadrada SMD 2835 genérica — 1,40 µmol/J</option>
+              <option value="d_blurple">Blurple / roxa com COB — 1,10 µmol/J</option>
+            </optgroup>
+            <optgroup label="LEDS Indoor — modelos nacionais">
+              <option value="li_qb60">QB60 — 60 W</option>
+              <option value="li_qb120">QB120 — 120 W</option>
+              <option value="li_qb240">QB240 — 240 W</option>
+              <option value="li_qb480">QB480 — 480 W</option>
+              <option value="li_pl240">PL240 — 240 W, Samsung LM281B</option>
+              <option value="li_600s">600 W — Samsung LM281B+</option>
+              <option value="li_pl720">PL720 — 720 W, Samsung LM281B+</option>
             </optgroup>
             <optgroup label="VIVOSUN — dados do fabricante">
               <option value="aw200se">AeroLight Wing AW200SE — 200 W, 2,75 µmol/J</option>
@@ -352,6 +370,7 @@ footer b{color:var(--dim)}
         </div>
         <div class="f" id="eff-wrap" style="display:none"><label for="eff">Eficácia <span class="u">µmol/J</span></label><input type="number" id="eff" step="0.05" value="2.7"></div>
         <div class="f" id="ppf-wrap" style="display:none"><label for="ppfin">PPF da luminária <span class="u">µmol/s</span></label><input type="number" id="ppfin" step="10" value="500"></div>
+        <div class="f" id="lux-wrap" style="display:none"><label for="luxin">Leitura média no dossel <span class="u">lux</span></label><input type="number" id="luxin" step="500" value="55000"></div>
         <p class="hint" id="eff-calc"></p>
         <div class="f"><label for="watt">Watts reais na tomada <span class="u">por luminária</span></label><input type="number" id="watt" step="5" value="480"></div>
         <div class="f"><label for="nfix">Número de luminárias</label><input type="number" id="nfix" step="1" min="1" value="1"></div>
@@ -723,6 +742,45 @@ var FIXTURES = {
   vsgen:  {eff:2.75, w:0,   nome:'linha VS',               cob:null}
 };
 
+/* Fator de conversão lux → PPFD. A literatura peer-reviewed usa ~67 lux por
+   µmol/m²/s como generalização para LED BRANCO. Não vale para painel roxo:
+   o lux pesa a resposta do olho humano, que tem pico no verde, e placa blurple
+   quase não emite verde — o luxímetro lê errado por um fator enorme. */
+var LUX_POR_PPFD = 67;
+
+/* Eficácia por DIODO. Para placa sem ficha técnica, o diodo é a informação mais
+   confiável que costuma aparecer no anúncio, e é ele que determina a eficácia.
+   Valores no nível da LUMINÁRIA (já com perda de driver e óptica), não do diodo
+   isolado — por isso ficam abaixo do que o datasheet do LED anuncia. */
+var DIODOS = {
+  d_lm301:  {eff:2.60, nome:'Samsung LM301H / LM301B'},
+  d_lm281:  {eff:2.40, nome:'Samsung LM281B / LM281B+'},
+  d_302h:   {eff:2.30, nome:'Ledestar 302H e similares'},
+  d_epi:    {eff:1.80, nome:'Epileds / branco full spectrum genérico'},
+  d_smd:    {eff:1.40, nome:'placa quadrada SMD 2835 genérica'},
+  d_blurple:{eff:1.10, nome:'blurple / roxa com COB'}
+};
+
+/* Modelos nacionais da LEDS Indoor. Potência e diodo vêm do site do fabricante;
+   a EFICÁCIA é derivada do diodo, porque eles não publicam PPF nem µmol/J. */
+var LEDSIND = {
+  li_qb60: {w:60,  d:'d_302h',  nome:'QB60'},
+  li_qb120:{w:120, d:'d_302h',  nome:'QB120'},
+  li_qb240:{w:240, d:'d_302h',  nome:'QB240'},
+  li_qb480:{w:480, d:'d_302h',  nome:'QB480'},
+  li_pl240:{w:240, d:'d_lm281', nome:'PL240 (Samsung LM281B)'},
+  li_pl720:{w:720, d:'d_lm281', nome:'PL720 Samsung LM281B+'},
+  li_600s: {w:600, d:'d_lm281', nome:'600 W Samsung LM281B+'}
+};
+(function(){                       // LEDS Indoor entra no mesmo mapa das demais
+  for (var k in LEDSIND) {
+    var m = LEDSIND[k];
+    FIXTURES[k] = {eff:DIODOS[m.d].eff, w:m.w, nome:'LEDS Indoor ' + m.nome,
+                   cob:null, diodo:DIODOS[m.d].nome, derivada:true};
+  }
+  for (var d in DIODOS) FIXTURES[d] = {eff:DIODOS[d].eff, w:0, nome:DIODOS[d].nome, cob:null, porDiodo:true};
+})();
+
 var TENTS = {
   '2x2':[2,2,5.3], '2x4':[2,4,6.5], '3x3':[3,3,6.5], '4x4':[4,4,6.5],
   '4x8':[4,8,6.5], '5x5':[5,5,6.5], '8x8':[8,8,6.9]
@@ -836,6 +894,7 @@ function read(){
        : FIXTURES[fixSel]     ? FIXTURES[fixSel].eff
        : +fixSel,
     fixMode: fixSel,
+    lux: +$('luxin').value,
     watt: +$('watt').value, nfix: Math.max(1, +$('nfix').value),
     hang: +$('hang').value, ph: +$('ph').value,
     type: type, fwk: +$('fwk').value, str: +$('str').value, vday: +$('vday').value,
@@ -859,8 +918,15 @@ function calc(s){
   r.volM3    = r.floorM2 * s.H;
 
   r.totalW = s.watt * s.nfix;
-  r.ppf    = r.totalW * s.eff;
-  r.ppfd   = r.canopyM2 > 0 ? (r.ppf * s.hang) / r.canopyM2 : 0;
+  r.medido = s.fixMode === 'lux';
+  if (r.medido) {
+    // Medição no dossel manda: é o PPFD real, não uma estimativa de ficha.
+    r.ppfd = s.lux / LUX_POR_PPFD;
+    r.ppf  = s.hang > 0 ? (r.ppfd * r.canopyM2) / s.hang : 0;  // retrocalculado só para exibir
+  } else {
+    r.ppf  = r.totalW * s.eff;
+    r.ppfd = r.canopyM2 > 0 ? (r.ppf * s.hang) / r.canopyM2 : 0;
+  }
 
   var co2 = CO2[s.co2];
   var flowerHours = s.isAuto ? Math.max(s.ph, 18) : s.ph;
@@ -1086,6 +1152,9 @@ function render(){
 
   if (s.nute === 'tea' || s.nute === 'dry' || s.nute === 'orgliq') notes.push({t:'info',i:'🧪',h:'Programas orgânicos trocam peso por terpenos',b:'Trabalhar com ' + NUTE_NAME[s.nute] + ' costuma render ' + fmt((1-NUTES[s.nute])*100) + '% menos que um programa de sais em peso bruto. Muita gente faz essa troca de propósito, por sabor e aroma — só saiba que ela já está embutida no número acima.'});
 
+  if (!r.medido && (r.brandFix = FIXTURES[s.fixMode]) && (r.brandFix.porDiodo || r.brandFix.derivada))
+    notes.push({t:'warn',i:'🔌',h:'Confirme o consumo na tomada',b:'Sua eficácia aqui é <b>estimada pelo diodo</b>, não medida. Isso é aceitável — o que costuma destruir a conta é a <b>potência</b>: placa de marketplace é anunciada com 2 a 4× o consumo real, e um "1000 W" normalmente puxa de 100 a 150 W. Um medidor de tomada custa pouco e corrige o maior erro do cálculo. Melhor ainda: meça o dossel com luxímetro e troque para o primeiro modo.'});
+
   var mudaPct = r.ppfd > 0 ? Math.round(Math.min(PPFD_MUDA, r.ppfd) / r.ppfd * 100) : 100;
   if (mudaPct < 25) notes.push({t:'info',i:'🌱',h:'Sua luminária é forte demais para muda',b:'Para entregar os ' + n(PPFD_MUDA) + ' PPFD que uma muda quer, você teria que dimerizar para <b>' + fmt(mudaPct) + '%</b> — e boa parte dos drivers não desce bem tão embaixo, além de distorcer o espectro. Prefira <b>subir a luminária</b> ou germinar no canto da estufa e só trazer para o centro na vega.'});
 
@@ -1123,7 +1192,13 @@ function render(){
   $('brand-note').innerHTML = '<b>' + bLabel + ':</b> ' + r.brand.nota;
 
   var fixSpec = FIXTURES[s.fixMode];
-  $('eff-calc').innerHTML = fixSpec
+  $('eff-calc').innerHTML = s.fixMode === 'lux'
+    ? '<b>' + fmt(s.lux) + ' lux ÷ ' + LUX_POR_PPFD + ' = ' + fmt(r.ppfd) + ' PPFD.</b> Medição vale mais que qualquer ficha técnica — esse número já é o real do seu dossel, e os watts abaixo passam a servir só para consumo e calor. Meça em 5 a 9 pontos com o luxímetro virado para cima na altura das copas e use a média. <b>Não funciona em placa roxa:</b> o luxímetro segue o olho humano, que enxerga verde, e blurple quase não emite verde.'
+    : fixSpec && fixSpec.porDiodo
+    ? 'Estimativa pelo diodo <b>' + fixSpec.nome + '</b>: ' + fmt(fixSpec.eff,2) + ' µmol/J no nível da luminária, já descontando driver e óptica. É o melhor palpite quando não há ficha — mas confira o <b>consumo real na tomada</b>, porque é ali que os anúncios mais mentem.'
+    : fixSpec && fixSpec.derivada
+    ? '<b>' + fixSpec.nome + '</b>: ' + fmt(fixSpec.w) + ' W e diodo ' + fixSpec.diodo + ' vêm do fabricante. A eficácia de <b>' + fmt(fixSpec.eff,2) + ' µmol/J é derivada do diodo</b>, porque a LEDS Indoor não publica PPF nem µmol/J. Se você tiver o PPF, prefira informá-lo.'
+    : fixSpec
     ? 'VIVOSUN ' + fixSpec.nome + ': <b>' + fmt(fixSpec.eff,2) + ' µmol/J</b> publicados pelo fabricante'
       + (fixSpec.cob ? ', cobertura indicada de <b>' + fixSpec.cob + '</b> em floração' : '')
       + '. Se você dimeriza, ajuste os watts para o consumo real.'
@@ -1212,6 +1287,7 @@ $('fix').addEventListener('change', function(){
   var v = $('fix').value;
   $('eff-wrap').style.display = v === 'custom' ? '' : 'none';
   $('ppf-wrap').style.display = v === 'ppf' ? '' : 'none';
+  $('lux-wrap').style.display = v === 'lux' ? '' : 'none';
   // Escolher um modelo conhecido já preenche o consumo nominal.
   if (FIXTURES[v] && FIXTURES[v].w) $('watt').value = FIXTURES[v].w;
   render();
